@@ -1,0 +1,149 @@
+{% extends 'app/base.html' %}
+
+{% block content %}
+<div class="container-fluid py-4">
+  <div class="row">
+    <div class="col-12">
+      <div class="card mb-4">
+        <div class="card-header pb-0">
+          <h6>All Probes</h6>
+        </div>
+        <div class="card-body px-0 pt-0 pb-2">
+          <div class="table-responsive p-0">
+            <table class="table align-items-center mb-0" id="probeTable">
+              <thead>
+                <tr>
+                  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Status</th>
+                  <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Name</th>
+                  <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">URL</th>
+                  <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Site</th>
+                  <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Action</th>
+                  <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">ID</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for probe in all_probes.values() %}
+                <tr>
+                  <td class="align-middle text-center text-sm">
+                    <span class="badge badge-sm bg-gradient-success">Online</span>
+                  </td>
+                  <td class="align-middle text-center text-sm">{{ probe.name }}</td>
+                  <td class="align-middle text-center text-sm">{{ probe.url }}</td>
+                  <td class="align-middle text-center text-sm">{{ probe.site }}</td>
+                  <td>
+                      <div class="input-group mb-3">
+                          <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">Probe Actions</button>
+                          <ul class="dropdown-menu">
+                              <li>
+                                  <button class="btn dropdown-item" data-action="ping">
+                                    Ping
+                                  </button>
+                              </li>
+                              <li>
+                                  <button class="btn dropdown-item" data-action="delete">
+                                    Delete
+                                  </button>
+                              </li>
+                          </ul>
+                      </div>
+                  </td>
+                  <td class="align-middle text-center text-sm">{{ probe.db_id }}</td>
+                </tr>
+                {% endfor %}
+                
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="text/javascript">
+document.addEventListener("DOMContentLoaded", () => {
+  const table = document.querySelector("#probeTable");
+  const rows = table.querySelectorAll("tbody tr");
+  const mntrURL = "{{ mntr_url }}";
+
+  // Handle row selection
+  rows.forEach(row => {
+    row.addEventListener("click", () => {
+      rows.forEach(r => {
+        r.classList.remove("selected");
+        r.style.backgroundColor = "";
+      });
+      row.classList.add("selected");
+      row.style.backgroundColor = "lightcoral";
+    });
+  });
+
+  // Handle probe actions
+  table.addEventListener("click", async (event) => {
+    const button = event.target.closest(".dropdown-item");
+    if (!button) return;
+
+    event.preventDefault();
+
+    const selectedRow = button.closest("tr");
+    if (!selectedRow) {
+      alert("Please select a valid row before proceeding!");
+      return;
+    }
+
+    const cells = selectedRow.querySelectorAll("td");
+    const rowData = {
+      name: cells[1]?.textContent.trim() || "",
+      url: cells[2]?.textContent.trim() || "",
+      site: cells[3]?.textContent.trim() || "",
+      id: cells[5]?.textContent.trim() || "",
+    };
+
+    alert(`Row Data:\nID: ${rowData.id}\nName: ${rowData.name}\nURL: ${rowData.url}\nSite: ${rowData.site}`);
+
+    const action = button.dataset.action;
+    const endpoints = {
+      ping: `${rowData.url}/api/status`,
+      delete: `https://${mntrURL}/delete?usr={{ cur_usr }}`
+    };
+
+    const endpoint = endpoints[action];
+    if (!endpoint) {
+      alert("Invalid action selected!");
+      return;
+    }
+
+    try {
+      if (action === "ping") {
+        const resp = await fetch(endpoint, { method: "GET" });
+        if (resp.ok) {
+          console.log("Ping successful");
+        } else {
+          console.error("Ping failed");
+        }
+      }
+
+      if (action === "delete") {
+        const probeDeleteConfirmation = confirm(`Are you sure you want to delete probe ${rowData.name}?`);
+
+        if (probeDeleteConfirmation) {
+          const payload = { id: rowData.id };
+          //const resp = await fetch(endpoint, {method: "POST", headers: {"Content-Type": "application/json", "X-ACCESS-TOKEN": "{{ jwt_token }}"}, body: JSON.stringify(payload)});
+          const resp = await fetch(endpoint, {method: "POST", credentials:"same-origin", body: JSON.stringify(payload)});
+          if (resp.ok) {
+            alert("Probe deletion successful");
+          } else {
+            alert("Probe deletion failed");
+          }
+        } else {
+          console.log("User clicked Cancel (No).");
+          // Perform actions for "No"
+        } 
+      }
+    } catch (err) {
+      console.error("Error executing action:", err);
+    }
+  });
+});
+</script>
+{% endblock %}

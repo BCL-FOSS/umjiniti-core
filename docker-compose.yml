@@ -1,0 +1,146 @@
+services:
+  socket_app:
+    restart: always
+    build:
+      context: .
+      dockerfile: socketapp/Dockerfile
+    container_name: socketapp
+    environment:
+      - CLIENT_AUTH_DB=${CLIENT_AUTH_DB}
+      - CLIENT_AUTH_DB_PORT=${CLIENT_AUTH_DB_PORT}
+      - CLIENT_SESS_DB=${CLIENT_SESS_DB}
+      - CLIENT_SESS_DB_PORT=${CLIENT_SESS_DB_PORT}
+      - CLIENT_DATA_DB=${CLIENT_DATA_DB}
+      - CLIENT_DATA_DB_PORT=${CLIENT_DATA_DB_PORT}
+      - IP_BAN_DB=${IP_BAN_DB}
+      - IP_BAN_DB_PORT=${IP_BAN_DB_PORT}
+      - RATE_LIMIT_DB=${RATE_LIMIT_DB}
+      - RATE_LIMIT_DB_PORT=${RATE_LIMIT_DB_PORT}
+      - SERVER_NAME=${SERVER_NAME}
+      - OLLAMA_PROXY_URL=http://ollama-proxy:8000/v1
+      - REQUEST_TIMEOUT=${REQUEST_TIMEOUT}
+      - API_TOKEN_NAME=${API_TOKEN_NAME}
+      - SDN_COUNT=${sdn_count}
+      - ALERT_COUNT=${alert_count}
+    volumes:
+      - socket_data:/home/quart/instance/apps
+    
+  agent_app:
+    restart: always
+    build:
+      context: .
+      dockerfile: agentapp/Dockerfile
+    container_name: agentapp
+    environment:
+      - CLIENT_AUTH_DB=${CLIENT_AUTH_DB}
+      - CLIENT_AUTH_DB_PORT=${CLIENT_AUTH_DB_PORT}
+      - CLIENT_SESS_DB=${CLIENT_SESS_DB}
+      - CLIENT_SESS_DB_PORT=${CLIENT_SESS_DB_PORT}
+      - CLIENT_DATA_DB=${CLIENT_DATA_DB}
+      - CLIENT_DATA_DB_PORT=${CLIENT_DATA_DB_PORT}
+      - IP_BAN_DB=${IP_BAN_DB}
+      - IP_BAN_DB_PORT=${IP_BAN_DB_PORT}
+      - SERVER_NAME=${SERVER_NAME}
+      - OLLAMA_PROXY_URL=http://ollama-proxy:8000/v1
+      - REQUEST_TIMEOUT=${REQUEST_TIMEOUT}
+      - API_TOKEN_NAME=${API_TOKEN_NAME}
+      - SDN_COUNT=${sdn_count}
+      - ALERT_COUNT=${alert_count}
+    volumes:
+      - agent_data:/home/quart/instance/apps
+
+  ollama-proxy:
+    restart: always
+    build:
+      context: .
+      dockerfile: socketapp/probe_mcp/ollamaproxy/Dockerfile
+    container_name: ollama-proxy
+    volumes:
+      - ollama_proxy_data:/home/quart/instance/apps
+    environment:
+      - CLIENT_DATA_DB=${CLIENT_DATA_DB}
+      - CLIENT_DATA_DB_PORT=${CLIENT_DATA_DB_PORT}
+      - REQUEST_TIMEOUT=${REQUEST_TIMEOUT}
+      - OLLAMA_MODEL=qwen3:1.7b
+      
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    restart: unless-stopped
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+    volumes:
+      - ollama_models:/root/.ollama 
+
+  rate_limit_redis:
+    image: redis:latest
+    container_name: ${RATE_LIMIT_DB}
+    command: ["redis-server", "--port", "9379", "--appendonly", "yes"]
+    volumes:
+      - rate_limit_data:/data 
+
+  client_sess_redis:
+    image: redis:latest
+    container_name: ${CLIENT_SESS_DB}
+    command: ["redis-server", "--port", "8369", "--appendonly", "yes"]
+    volumes:
+      - client_sess_data:/data
+
+  client_auth_redis:
+    image: redis:latest
+    container_name: ${CLIENT_AUTH_DB}
+    command: ["redis-server", "--port", "7369", "--appendonly", "yes"]
+    volumes:
+      - client_auth_data:/data 
+
+  client_data_redis:
+    image: redis:latest
+    container_name: ${CLIENT_DATA_DB}
+    command: ["redis-server", "--port", "6369", "--appendonly", "yes"]
+    volumes:
+      - client_data:/data
+
+  ip_ban_redis:
+    image: redis:latest
+    container_name: ${IP_BAN_DB}
+    command: ["redis-server", "--port", "5379", "--appendonly", "yes"]
+    volumes:
+      - ip_ban_data:/data
+
+  caddy:
+    image: caddy:latest
+    container_name: caddy
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - agent_app
+
+volumes:
+  ip_ban_data:
+    external: true
+  ollama_proxy_data:
+    external: true
+  ollama_models:
+    external: true
+  socket_data:
+    external: true
+  agent_data:
+    external: true
+  client_data:
+    external: true
+  client_sess_data:
+    external: true
+  client_auth_data:
+    external: true
+  rate_limit_data:
+    external: true
+  caddy_data:
+    external: true
+  caddy_config:
+    external: true

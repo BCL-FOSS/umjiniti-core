@@ -1,0 +1,131 @@
+{% extends 'app/base.html' %}
+
+{% block content %}
+<div class="container-fluid py-4">
+  <div class="row">
+    <div class="col-12">
+      <div class="card mb-4">
+        <div class="card-header pb-0">
+          <h6>All Flows</h6>
+        </div>
+        <div class="card-body px-0 pt-0 pb-2">
+          <div class="table-responsive p-0">
+            <table class="table align-items-center mb-0" id="flowTable">
+              <thead>
+                <tr>
+                  <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Name</th>
+                  <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Action</th>
+                  <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Assigned Probe</th>
+                  <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">ID</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for flow in flows.values() %}
+                <tr>
+                  <td class="align-middle text-center text-sm">{{ flow.name }}</td>
+                  <td>
+                      <div class="input-group mb-3">
+                          <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">Probe Actions</button>
+                          <ul class="dropdown-menu">
+                              <li>
+                                <button class="btn dropdown-item" data-action="run">
+                                  Run
+                                </button>
+                              </li>
+                              <li>
+                                <button class="btn dropdown-item" data-action="delete">
+                                  Delete
+                                </button>
+                              </li>
+                          </ul>
+                      </div>
+                  </td>
+                  <td class="align-middle text-center text-sm">{{ flow.probe }}</td>
+                  <td class="align-middle text-center text-sm">{{ flow.id }}</td>
+                  
+                </tr>
+                {% endfor %}
+                
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="text/javascript">
+  const mntrURL = "{{ mntr_url }}";
+  const user = "{{ user }}";
+  const jwtToken = "{{ jwt_token }}";
+  const curUser = "{{ cur_usr }}";
+
+  document.querySelectorAll('#flowTable tbody tr').forEach(row => {
+    row.addEventListener('click', () => {
+      document.querySelectorAll('#flowTable tbody tr').forEach(r => {
+        r.classList.remove('selected');
+        r.style.backgroundColor = '';
+      });
+      row.classList.add('selected');
+      row.style.backgroundColor = 'lightcoral';
+    });
+  });
+
+  document.getElementById('flowTable').addEventListener('click', async (e) => {
+    if (e.target.matches('.dropdown-item')) {
+      e.preventDefault();
+
+      const selectedRow = e.target.closest('tr');
+      if (!selectedRow) {
+        alert('Please select a valid row before proceeding!');
+        return;
+      }
+      
+      const name = selectedRow.querySelector('td:nth-child(1)').textContent.trim();
+      const probe = selectedRow.querySelector('td:nth-child(3)').textContent.trim();
+      const id = selectedRow.querySelector('td:nth-child(4)').textContent.trim();
+
+      //alert(`Row Data:\nID: ${id}\nName: ${name}\nProbe: ${probe}`);
+
+      const action = e.target.getAttribute('data-action');
+      const endpoints = {
+        run: `https://${mntrURL}/flowrun?usr=${curUser}`,
+        delete: `https://${mntrURL}/flowdelete?usr=${curUser}`
+      };
+
+      const endpoint = endpoints[action];
+      if (!endpoint) {
+        alert('Invalid action selected!');
+        return;
+      }
+
+      const flowActionConfirmation = confirm(`Are you sure you want to ${action} flow: ${name}?`);
+
+      if (flowActionConfirmation){
+        const payload = { id: id, probe: probe };
+
+        try {
+          //const resp = await fetch(endpoint, {method: 'POST', headers: {'Content-Type': 'application/json', 'X-ACCESS-TOKEN': jwtToken}, body: JSON.stringify(payload)});
+          const resp = await fetch(endpoint, {method: 'POST', credentials: "same-origin", body: JSON.stringify(payload)});
+
+          if (resp.ok) {
+            const j = await resp.json()
+            alert(`Action '${action}' executed successfully for flow ${name}.\n`+JSON.stringify(j));
+          } else {
+            alert(`Flow ${action} failed.`);
+          }
+        } catch (err) {
+          console.error('Network or server error:', err);
+        }
+
+      } else {
+        alert(`Flow ${action} cancelled...`);
+      }
+
+      
+    }
+  });
+</script>
+
+{% endblock %}

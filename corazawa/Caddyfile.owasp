@@ -1,0 +1,105 @@
+# Caddyfile
+
+{
+    order coraza_waf first
+}
+
+umjiniti.baughcl.tech {
+	@websockets {
+		header Connection *Upgrade*
+		header Upgrade    websocket
+	}
+
+	# ---- Coraza WAF (protects all requests to this site) ----
+	coraza_waf {
+		load_owasp_crs
+
+		directives `
+			# Enable WAF engine
+			SecRuleEngine On
+
+			# Initialize TX collection
+			SecAction "id:900000,phase:1,pass,nolog,initcol:tx=%{unique_id}"
+			SecAction "id:900001,phase:1,pass,nolog,ctl:requestBodyProcessor=JSON"
+
+			# Request body inspection limits
+			SecRequestBodyLimit 13107200
+			SecRequestBodyNoFilesLimit 131072
+			SecRequestBodyInMemoryLimit 131072
+
+			# Include recommended configs and OWASP CRS
+			Include @coraza.conf-recommended
+			Include @crs-setup.conf.example
+			Include @owasp_crs/*.conf
+
+			# --- Application-specific tuning rules ---
+			# Allow WebSocket upgrade paths
+			SecRule REQUEST_URI "@beginsWith /ws" "id:100001,phase:1,pass,log,msg:'Allow WebSocket path',ctl:ruleEngine=Off"
+
+			# Allow selected JSON API endpoints that may trigger false positives
+			SecRule REQUEST_URI "@beginsWith /prbs" "id:100002,phase:1,pass,log,msg:'Pass API /prbs',ctl:ruleEngine=Off"
+			SecRule REQUEST_URI "@beginsWith /enroll" "id:100003,phase:1,pass,log,msg:'Pass API /enroll',ctl:ruleEngine=Off"
+
+			# Example targeted rule disables (tune based on logs)
+			# SecRuleRemoveById 941100
+			# SecRuleRemoveById 942100
+		`
+	}
+	# ---- End Coraza WAF block ----
+
+    handle /* {
+		reverse_proxy agentapp:4000
+	}
+
+	handle /login* {
+		reverse_proxy agentapp:4000
+	}
+
+	handle /register* {
+		reverse_proxy agentapp:4000
+	}
+
+	handle /agent* {
+		reverse_proxy agentapp:4000
+	}
+
+	handle /settings* {
+		reverse_proxy agentapp:4000
+	}
+
+	handle /logout* {
+		reverse_proxy agentapp:4000
+	}
+
+	handle /wkflw* {
+		reverse_proxy agentapp:4000
+	}
+
+	handle /prbs* {
+		reverse_proxy agentapp:4000
+	}
+
+	handle /netvis* {
+		reverse_proxy agentapp:4000
+	}
+
+	handle /ws* {
+		reverse_proxy @websockets socketapp:5000
+	}
+
+	handle /init* {
+		reverse_proxy socketapp:5000
+	}
+
+	handle /enroll* {
+		reverse_proxy socketapp:5000
+	}
+
+	handle /delete* {
+		reverse_proxy socketapp:5000
+	}
+
+	handle /workflow* {
+		reverse_proxy socketapp:5000
+	}
+}

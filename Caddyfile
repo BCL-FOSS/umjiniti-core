@@ -1,0 +1,91 @@
+# Caddyfile
+
+umjini.baughcl.tech {
+	@websockets {
+		header Connection *Upgrade*
+		header Upgrade    websocket
+	}
+
+	handle /* {
+		reverse_proxy agentapp:4000
+	}
+
+	handle /login* {
+		reverse_proxy agentapp:4000
+	}
+
+	handle /register* {
+		reverse_proxy agentapp:4000
+	}
+
+	handle /agent* {
+		reverse_proxy agentapp:4000
+	}
+
+	handle /settings* {
+		reverse_proxy agentapp:4000
+	}
+
+	handle /logout* {
+		reverse_proxy agentapp:4000
+	}
+
+	handle /floweditor* {
+		reverse_proxy agentapp:4000
+	}
+
+	handle /flowmgr* {
+		reverse_proxy agentapp:4000
+	}
+
+	handle /probes* {
+		reverse_proxy agentapp:4000
+	}
+
+	handle /netvis* {
+		reverse_proxy agentapp:4000
+	}
+
+	handle /ws* {
+		reverse_proxy @websockets socketapp:5000
+	}
+
+	handle /init* {
+		reverse_proxy socketapp:5000
+	}
+
+	handle /enroll* {
+		reverse_proxy socketapp:5000
+	}
+
+	handle /delete* {
+		reverse_proxy socketapp:5000
+	}
+
+	handle /refresh* {
+		reverse_proxy socketapp:5000
+	}
+
+	handle /flowrun* {
+		reverse_proxy socketapp:5000
+	}
+
+	handle /flowdelete* {
+		reverse_proxy socketapp:5000
+	}
+
+	handle /flowsave* {
+		reverse_proxy socketapp:5000
+	}
+
+	handle /flowload* {
+		reverse_proxy socketapp:5000
+	}
+
+}
+
+
+
+
+
+
