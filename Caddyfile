@@ -1,6 +1,6 @@
 # Caddyfile
 
-umjini.baughcl.tech {
+umj.baughlabs.tech {
 	@websockets {
 		header Connection *Upgrade*
 		header Upgrade    websocket
