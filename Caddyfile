@@ -62,10 +62,6 @@ umj.baughlabs.tech {
 		reverse_proxy socketapp:5000
 	}
 
-	handle /refresh* {
-		reverse_proxy socketapp:5000
-	}
-
 	handle /flowrun* {
 		reverse_proxy socketapp:5000
 	}

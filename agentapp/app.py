@@ -24,6 +24,16 @@ import secrets
 import jwt
 from datetime import datetime, timedelta, timezone
 from tzlocal import get_localzone
+from onetimesecret import OneTimeSecretCli
+from utils.EmailHandler import EmailHandler
+
+cli = OneTimeSecretCli(os.environ.get('OTS_USER'), os.environ.get('OTS_KEY'), os.environ.get('REGION'))
+email_handler = EmailHandler(host=os.environ.get('SMTP_SERVER'),
+                             port=int(os.environ.get('SMTP_PORT')),
+                             username=os.environ.get('SMTP_SENDER'),
+                             password=os.environ.get('SMTP_SENDER_APP_PASSWORD'),
+                             sender=os.environ.get('SMTP_SENDER'),
+                             tls=True)
 
 util_obj = Util()
 url_key = util_obj.key_gen(size=100)
@@ -312,45 +322,6 @@ async def logout(auth_id):
         resp.delete_cookie("access_token")
         resp.delete_cookie("api_access_token")
         return resp
-    
-@app.route("/refresh", methods=["GET"])
-@user_login_required
-async def refresh():
-    
-    sess_id =current_client.auth_id
-
-    await cl_sess_db.connect_db()
-    await cl_auth_db.connect_db()
-
-    user_data = await cl_sess_db.get_all_data(match=f"*{sess_id}*")
-
-    user_data_dict = next(iter(user_data.values()))
-    
-    logger.info(user_data)
-
-    new_jwt = util_obj.generate_ephemeral_token(user_id=sess_id, secret_key=user_data_dict.get('usr_jwt_secret'), rand=user_data_dict.get('usr_rand'))
-
-    resp = jsonify({"status": "ok"})
-    resp.set_cookie("access_token", new_jwt, httponly=True, secure=True, samesite="Strict", max_age=None)
-
-    if user_data_dict.get(f'{api_name}_id') is None:
-        return resp
-    
-    api_jwt_key = user_data_dict.get(f'{api_name}_jwt_secret')
-    api_rand = user_data_dict.get(f'{api_name}_rand')
-    api_id = user_data_dict.get(f'{api_name}_id')
-       
-    api_jwt_token = util_obj.generate_ephemeral_token(id=api_id, secret_key=api_jwt_key, rand=api_rand, expire=1)
-        
-    resp.set_cookie(
-        key='api_access_token',
-        value=api_jwt_token,
-        httponly=True,
-        secure=True,
-        samesite="Strict",
-        max_age=None  # 1 hour, adjust as needed
-    )
-    return resp
 
 @app.route('/dashboard', defaults={'cmp_id': url_cmp_id,'obsc': url_key}, methods=['GET', 'POST'])
 @app.route("/dashboard/<string:cmp_id>/<string:obsc>", methods=['GET', 'POST'])
@@ -495,7 +466,26 @@ async def settings(cmp_id, obsc):
             await flash(message=f"API key gen failed...")
             return redirect(url_for('settings', cmp_id=cmp_id, obsc=obsc))
         
-        await flash(message=f"{api_type} API Key: {new_api_key}. Copy this and store it securely as it will not be displayed again.")
+        link = cli.create_link(secret=new_api_key, ttl=int(os.environ.get('OTS_TTL')))
+
+        await email_handler.send_email(
+            recipient=os.environ.get('SMTP_RECEIVER'),
+            subject=f"New umjiniti-core API Key Generated",
+            message=f"""
+            Hello,
+
+            A new umjiniti API key has been generated for user {cl_sess_data_dict.get('unm')}.
+
+            You can retrieve the API key using the following one-time secret link. Note that this link will expire after a single use.
+
+            API Key Retrieval Link: {link}
+
+            Thank you,
+            umjiniti Team
+            """
+        )
+        
+        await flash(message=f"{api_type} API Key has been generated and sent to the registered email address.")
         return redirect(url_for('settings', cmp_id=cmp_id, obsc=obsc))
            
     if await email_alert_form.validate_on_submit():

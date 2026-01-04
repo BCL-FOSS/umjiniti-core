@@ -22,6 +22,14 @@ services:
       - API_TOKEN_NAME=${API_TOKEN_NAME}
       - SDN_COUNT=${sdn_count}
       - ALERT_COUNT=${alert_count}
+      - SMTP_SERVER=${SMTP_SERVER}
+      - SMTP_PORT=${SMTP_PORT}
+      - SMTP_SENDER=${SMTP_SENDER}
+      - SMTP_SENDER_APP_PASSWORD=${SMTP_SENDER_APP_PASSWORD}
+      - SMTP_RECEIVER=${SMTP_RECEIVER}
+      - ONETIMESECRET_USER=${OTS_USER}
+      - ONETIMESECRET_KEY=${OTS_KEY}
+      - REGION=us  # Default region, can be "us" or "eu"
     volumes:
       - socket_data:/home/quart/instance/apps
     
@@ -46,6 +54,14 @@ services:
       - API_TOKEN_NAME=${API_TOKEN_NAME}
       - SDN_COUNT=${sdn_count}
       - ALERT_COUNT=${alert_count}
+      - SMTP_SERVER=${SMTP_SERVER}
+      - SMTP_PORT=${SMTP_PORT}
+      - SMTP_SENDER=${SMTP_SENDER}
+      - SMTP_SENDER_APP_PASSWORD=${SMTP_SENDER_APP_PASSWORD}
+      - SMTP_RECEIVER=${SMTP_RECEIVER}
+      - ONETIMESECRET_USER=${OTS_USER}
+      - ONETIMESECRET_KEY=${OTS_KEY}
+      - REGION=us  # Default region, can be "us" or "eu"
     volumes:
       - agent_data:/home/quart/instance/apps
 

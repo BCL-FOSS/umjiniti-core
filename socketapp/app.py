@@ -26,6 +26,8 @@ import ast
 import secrets
 from datetime import datetime, timedelta, timezone
 from tzlocal import get_localzone
+from probe_mcp.ollamaproxy.utils.EmailAlert import EmailAlert
+from onetimesecret import OneTimeSecretCli
 
 # Session and Auth Redis DB init
 cl_sess_db = RedisDB(hostname=os.environ.get('CLIENT_SESS_DB'), 
@@ -45,6 +47,17 @@ api_name = 'umj-api-wflw'
 auth_ping_counter = {}
 mntr_url=os.environ.get('SERVER_NAME')
 REQUIRED_OUT_OF_SCOPE_MSG = "Please provide a question or request related to network administration or the available MCP tools."
+
+email_handler = EmailAlert(
+    host=os.environ.get('SMTP_SERVER'),
+    port=int(os.environ.get('SMTP_PORT')),
+    username=os.environ.get('SMTP_SENDER'),
+    password=os.environ.get('SMTP_SENDER_APP_PASSWORD'),
+    sender=os.environ.get('SMTP_SENDER'),
+    tls=True
+)
+
+cli = OneTimeSecretCli(os.environ.get('OTS_USER'), os.environ.get('OTS_KEY'), os.environ.get('REGION'))
 
 # Helper functions to quantize datetimes to 5-minute increments
 def round_down_to_5min(dt: datetime) -> datetime:
@@ -886,7 +899,25 @@ async def resetapi():
                     }
         
         if await cl_auth_db.upload_db_data(id=usr_data_dict['db_id'], data=updated_api_data) is not None:
-            return jsonify(new_api_key)
+            link =cli.create_link(secret=new_api_key, ttl=int(os.environ.get('OTS_TTL')))
+
+            await email_handler.send_email_alert(
+                recipient=os.environ.get('SMTP_RECEIVER'),
+                subject=f"New umjiniti-core API Key Generated",
+                message=f"""
+                Hello,
+
+                A new umjiniti API key has been generated for user {usr_data_dict.get('unm')}.
+
+                You can retrieve the API key using the following one-time secret link. Note that this link will expire after a single use.
+
+                API Key Retrieval Link: {link}
+
+                Thank you,
+                umjiniti Team
+                """
+            )
+            return jsonify('API key reset successful. Check your email for the new API key.')
         else:
             return jsonify('API key reset failed'), 400
         

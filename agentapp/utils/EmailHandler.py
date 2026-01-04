@@ -8,7 +8,7 @@ import logging
 logging.basicConfig(level=logging.DEBUG)
 logging.getLogger('passlib').setLevel(logging.ERROR)
 
-class EmailAlert():
+class EmailHandler():
     def __init__(self, host: str, port: int, username: str, password: str, sender: str, tls: bool = True):
         self.smtp_host = host
         self.smtp_port = port
@@ -16,8 +16,9 @@ class EmailAlert():
         self.password = password
         self.sender = sender
         self.tls = tls
-    
-    async def send_email_alert(
+        self.logger = logging.getLogger(__name__)
+
+    async def send_email(
         self,
         recipient: str,
         subject: str,
@@ -47,3 +48,4 @@ class EmailAlert():
             logging.error(f"Failed to send email: {e}")
         except SMTPException as smtp_e:
             logging.error(f"SMTP error occurred: {smtp_e}")
+
