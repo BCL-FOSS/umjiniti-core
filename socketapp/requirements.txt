@@ -20,5 +20,5 @@ langgraph
 langchain-mcp-adapters
 langchain-community
 langgraph-supervisor
-aiosmtplib
 onetimesecret
+aiosmtplib==4.0.2
