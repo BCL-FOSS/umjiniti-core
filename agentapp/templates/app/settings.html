@@ -382,7 +382,7 @@
 
     resetAPIBtn.addEventListener('click', async function() {
       if (confirm("Are you sure you want to reset your API key? This action cannot be undone.")) {
-        resp = await fetch(`https://${mntrURL}/resetapi?usr={{ cur_usr }}`, {
+        resp = await fetch(`https://${mntrURL}/resetapi?sess_id={{ auth_id }}`, {
           method: 'POST',
           credentials:"same-origin"
         });

@@ -1,6 +1,10 @@
-# README #
+# umjiniti-core #
 
-This README would normally document whatever steps are necessary to get your application up and running.
+Network Management System that leverages open source LLMs to proactively monitor, visualize and troubleshoot on-prem and cloud environments via distributed probes.
+
+<p align="center">
+  <img width="300" height="300" src="https://github.com/BCL-FOSS/net-con.ai/blob/experimental/netsumapicon.png?raw=true">
+</p>
 
 ### What is this repository for? ###
 

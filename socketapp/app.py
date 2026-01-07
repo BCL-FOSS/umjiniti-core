@@ -944,6 +944,8 @@ async def resetapi():
                             f"{api_name}_rand": secrets.token_urlsafe(500),
                             f"{api_name}_jwt_secret": secrets.token_urlsafe(500)
                         }
+        else:
+            return jsonify('API key reset failed'), 400
         
         if await cl_data_db.upload_db_data(id=f"api_dta:{usr_data_dict['db_id']}", data=updated_api_data) is not None:
             link = cli.create_link(secret=new_api_key, ttl=int(os.environ.get('OTS_TTL')))
