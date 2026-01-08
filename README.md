@@ -6,28 +6,44 @@ Network Management System that leverages open source LLMs to proactively monitor
   <img width="300" height="300" src="https://github.com/BCL-FOSS/umjiniti-core/blob/main/agentapp/static/img/bcl/umjiniti.png?raw=true">
 </p>
 
-### What is this repository for? ###
+### Get Started ###
 
-* Quick summary
-* Version
-* [Learn Markdown](https://bitbucket.org/tutorials/markdowndemo)
+1. Set the necessary environment variables in the included .env
+```bash
+# onetimesecret API credentials for sending OTP links
+OTS_USER= # onetimesecret.com user email
+OTS_KEY= # onetimesecret.com API key
+OTS_TTL=300 # Time to live for OTP links in seconds (default 5 minutes)
 
-### How do I get set up? ###
+# SMTP email server settings for sending OTP links
+SMTP_SERVER=
+SMTP_PORT=
+SMTP_SENDER=
+SMTP_SENDER_APP_PASSWORD=
+SMTP_RECEIVER=
 
-* Summary of set up
-* Configuration
-* Dependencies
-* Database configuration
-* How to run tests
-* Deployment instructions
+# Set server URL here (must be FQDN)
+SERVER_NAME=umj.baughlabs.tech
+#SOCKET_SERVER_NAME=socket.baughlabs.tech
 
-### Contribution guidelines ###
+# Enter your MCP server urls here for use within umjiniti
+MCP_URLS='["https://user.mcp1.com/mcp/", "https://user.mcp2.com/mcp/"]'
 
-* Writing tests
-* Code review
-* Other guidelines
+# Set how many SDN controllers (UniFi, TP Link Omada) and alert contacts you want to allow
+sdn_count=1
+alert_count=3
 
-### Who do I talk to? ###
-
-* Repo owner or admin
-* Other community or team contact
+# No need to edit anything below this comment
+IP_BAN_DB=ipbanredis
+IP_BAN_DB_PORT=5379
+CLIENT_DATA_DB=clientdatadb
+CLIENT_DATA_DB_PORT=6369
+CLIENT_AUTH_DB=clientauthdb
+CLIENT_AUTH_DB_PORT=7369
+CLIENT_SESS_DB=clientsessdb
+CLIENT_SESS_DB_PORT=8369
+RATE_LIMIT_DB=ratelimitdb
+RATE_LIMIT_DB_PORT=9379
+REQUEST_TIMEOUT=600
+API_TOKEN_NAME=wkflw_token
+```
