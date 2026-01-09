@@ -950,7 +950,7 @@ async def resetapi():
         if await cl_data_db.upload_db_data(id=f"api_dta:{usr_data_dict['db_id']}", data=updated_api_data) is not None:
             link = cli.create_link(secret=new_api_key, ttl=int(os.environ.get('OTS_TTL')))
 
-            await email_handler.send_email_alert(
+            send_result = await email_handler.send_email_alert(
                 recipient=os.environ.get('SMTP_RECEIVER'),
                 subject=f"New umjiniti-core API Key Generated",
                 message=f"""
@@ -966,6 +966,10 @@ async def resetapi():
                 umjiniti Team
                 """
             )
+            logger.info(f"API key reset email send result: {send_result}")
+            if send_result is None:
+                logger.error("Failed to send API key reset email")
+                return jsonify('API key reset failed'), 400
             return jsonify('API key reset successful. Check your email for the new API key.')
         else:
             return jsonify('API key reset failed'), 400
