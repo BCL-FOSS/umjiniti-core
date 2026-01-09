@@ -12,7 +12,7 @@ logging.getLogger('passlib').setLevel(logging.ERROR)
 logger = logging.getLogger(__name__)
 
 class EmailAlert:
-    def __init__(self, host: str, port: int, username: str, password: str, sender: str, tls: bool = True, timeout: int = 10):
+    def __init__(self, host: str, port: int, username: str, password: str, sender: str, tls: bool = True, timeout: int = 60):
         self.smtp_host = host
         self.smtp_port = int(port) 
         self.username = username
