@@ -21,3 +21,4 @@ langgraph-supervisor==0.0.29
 aiosmtplib==4.0.2
 langchain-ollama==0.3.10
 slack-sdk==3.37.0
+brevo-python==1.2.0

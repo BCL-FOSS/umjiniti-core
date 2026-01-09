@@ -10,10 +10,13 @@ Network Management System that leverages open source LLMs to proactively monitor
 
 1. Set the necessary environment variables in the included .env
 ```bash
-# onetimesecret API credentials for sending OTP links
+# onetimesecret API key for generating OTP links
 OTS_USER= # onetimesecret.com user email
 OTS_KEY= # onetimesecret.com API key
 OTS_TTL=300 # Time to live for OTP links in seconds (default 5 minutes)
+
+# Brevo API key for sending OTP links
+BREVO_API_KEY=
 
 # SMTP email server settings for sending OTP links
 SMTP_SERVER=
