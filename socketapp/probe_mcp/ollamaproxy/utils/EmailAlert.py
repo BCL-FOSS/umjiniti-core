@@ -55,7 +55,7 @@ class EmailAlert:
         try:
 
             logger.debug(f"Sending email from {self.sender} to {recipient}")
-            result = await smtp.send_message(message=msg, sender=self.sender, recipients=[recipient], start_tls=start_tls, username=self.username, password=self.password)
+            result = await smtp.send_message(msg, sender=self.sender, recipients=[recipient], start_tls=start_tls, username=self.username, password=self.password)
             logger.info(f"Email send result: {result}")
 
             await smtp.quit()
