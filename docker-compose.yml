@@ -25,6 +25,8 @@ services:
       - OTS_TTL=${OTS_TTL}
       - REGION=${OTS_REGION} 
       - MAX_AUTH_ATTEMPTS=${MAX_AUTH_ATTEMPTS}
+      - BREVO_API_KEY=${BREVO_API_KEY}
+      - BREVO_SENDER_EMAIL=${BREVO_SENDER_EMAIL}
     volumes:
       - socket_data:/home/quart/instance/apps
     
@@ -52,6 +54,8 @@ services:
       - OTS_TTL=${OTS_TTL}
       - REGION=${OTS_REGION}
       - MAX_AUTH_ATTEMPTS=${MAX_AUTH_ATTEMPTS}
+      - BREVO_API_KEY=${BREVO_API_KEY}
+      - BREVO_SENDER_EMAIL=${BREVO_SENDER_EMAIL}
     volumes:
       - agent_data:/home/quart/instance/apps
 
