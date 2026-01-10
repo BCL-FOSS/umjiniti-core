@@ -59,7 +59,7 @@ API_TOKEN_NAME=wkflw_token
 ```bash
   sudo docker container ls
 ```
-  * Run the 
+  * Generate your registration key
 ```bash
   sudo docker exec -it <socket_app_container_id> python /home/quart/registration_key_gen.py -u <YOUR-USERNAME>
 ```
