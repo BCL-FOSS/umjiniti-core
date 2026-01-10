@@ -3,9 +3,6 @@ from init_app import (app, client_auth, current_admin, current_client, logger,
                       )
 from forms.LoginForm import LoginForm
 from forms.RegisterForm import RegisterForm
-from forms.SDNCredForm import SDNCredForm
-from forms.APIKeyGenForm import APIKeyGenForm
-from forms.AlertEmailForm import AlertEmailForm
 from forms.AlertJiraForm import AlertJiraForm
 from forms.AlertSlackForm import AlertSlackForm
 from quart import (render_template_string, render_template, flash, redirect, url_for, session, request, jsonify, abort)
@@ -52,6 +49,7 @@ mntr_url=os.environ.get('SERVER_NAME')
 api_name = 'umj-api-wflw'
 max_auth_attempts=3
 auth_attempts={}
+reg_attempts={}
 
 def admin_login_required(func):
     @wraps(func)
@@ -127,6 +125,8 @@ async def login():
             username = username.replace(" ", "").lower()
             
             await cl_auth_db.connect_db()
+            await cl_sess_db.connect_db()
+            await cl_data_db.connect_db()
 
             if await cl_auth_db.get_all_data(match=f'*{username}*', cnfrm=True) is True:
               
@@ -177,13 +177,18 @@ async def login():
                             max_age=None      # 1 hour: 3600
                         )
 
-                        if sub_dict.get(f'{api_name}_id') is None:  
+                        if await cl_data_db.get_all_data(match=f"api_dta:{sub_dict.get('db_id')}", cnfrm=True) is False:
+                            logger.info("User JWT token set in cookie.")
                             await flash(message=f'Authentication successful for {sub_dict.get('unm')}!', category='success')
                             return resp
+                           
                         else:
-                            api_jwt_key = sub_dict.get(f'{api_name}_jwt_secret')
-                            api_rand = sub_dict.get(f'{api_name}_rand')
-                            api_id = sub_dict.get(f'{api_name}_id')
+                            api_data = await cl_data_db.get_all_data(match=f"api_dta:{sub_dict.get('db_id')}")
+                            api_data_sub_dict = next(iter(api_data.values()))
+
+                            api_jwt_key = api_data_sub_dict.get(f'{api_name}_jwt_secret')
+                            api_rand = api_data_sub_dict.get(f'{api_name}_rand')
+                            api_id = api_data_sub_dict.get(f'{api_name}_id')
                         
                             jwt_token = util_obj.generate_ephemeral_token(user_id=api_id, secret_key=api_jwt_key, user_rand=api_rand)
 
@@ -238,7 +243,57 @@ async def register():
         form = await RegisterForm.create_form()
 
         if await form.validate_on_submit():
-            username, password = form.uname.data.replace(" ", "").lower(), form.password.data
+            reg_key = form.reg_key.data
+            username = form.uname.data.replace(" ", "").lower()
+
+            await cl_auth_db.connect_db()
+
+            if await cl_auth_db.get_all_data(match=f"reg_key:{username}:*", cnfrm=True) is False or reg_key is None:
+                if request.access_route[-1] not in reg_attempts:
+                        reg_attempts[request.access_route[-1]] = 1
+
+                if reg_attempts[request.access_route[-1]] != max_auth_attempts:
+                    reg_attempts[request.access_route[-1]] += 1
+                    await flash(message=f'Try again...', category='danger')
+                    return redirect(url_for('login'))
+                else:
+                    await ip_ban_db.connect_db()
+                    now = datetime.now(tz=timezone.utc)
+                    ban_data = {'ip': request.access_route[-1],
+                                    'banned_at': now.isoformat()}
+                    if await ip_ban_db.upload_db_data(id=f"blocked_ip:{request.access_route[-1]}", data=ban_data) is not None:
+                        logger.warning(f"Max authentication attempts reached for {request.access_route[-1]}. Blocking further attempts.")
+                        reg_attempts.pop(request.access_route[-1], None)
+                        abort(403) 
+
+            reg_key_data = await cl_auth_db.get_all_data(match=f"reg_key:{username}:*")
+
+            reg_key_sub_dict = next(iter(reg_key_data.values()))
+
+            logger.info(reg_key_sub_dict)
+
+            if bcrypt.verify(secret=reg_key, hash=reg_key_sub_dict.get("reg_key")) is False:
+                if request.access_route[-1] not in reg_attempts:
+                    reg_attempts[request.access_route[-1]] = 1
+
+                if reg_attempts[request.access_route[-1]] != max_auth_attempts:
+                    reg_attempts[request.access_route[-1]] += 1
+                    await flash(message=f'Try again...', category='danger')
+                    return redirect(url_for('login'))
+                else:
+                    await ip_ban_db.connect_db()
+                    now = datetime.now(tz=timezone.utc)
+                    ban_data = {'ip': request.access_route[-1],
+                                    'banned_at': now.isoformat()}
+                    if await ip_ban_db.upload_db_data(id=f"blocked_ip:{request.access_route[-1]}", data=ban_data) is not None:
+                        logger.warning(f"Max authentication attempts reached for {request.access_route[-1]}. Blocking further attempts.")
+                        reg_attempts.pop(request.access_route[-1], None)
+                        abort(403) 
+
+            password = form.password.data
+            email = form.email.data
+            fname = form.fname.data
+            lname = form.lname.data
 
             password_hash = bcrypt.hash(password)
 
@@ -251,14 +306,13 @@ async def register():
             user_obj = {
                 "id": user_id,
                 "unm": username,
+                "eml": email,
                 "pwd": password_hash,
-                "sdn_users": None,
-                "mcp_api_key": []
+                "fname": fname, 
+                "lname": lname
             }
 
             logger.info(f"User ID: {user_obj['id']}")
-
-            await cl_auth_db.connect_db()
 
             user_exist = await cl_auth_db.get_all_data(match=f'*{username}*', cnfrm=True)
 
@@ -270,6 +324,9 @@ async def register():
 
                 # Upload user data
                 if await cl_auth_db.upload_db_data(id=f"{user_key}", data=user_obj) > 0:
+                    reg_key_del = await cl_auth_db.del_obj(key=reg_key_sub_dict.get('id')) 
+                    logger.info(f"Registration key deletion status: {reg_key_del}")
+
                     await flash(message=f'Registration successful for {username}!', category='success')
                     return redirect(url_for('login'))
                 else:
@@ -390,9 +447,6 @@ async def settings(cmp_id, obsc):
     await cl_data_db.connect_db()
 
     session["csrf_ready"] = True
-    sdn_form = await SDNCredForm.create_form()
-    api_form = await APIKeyGenForm.create_form()
-    email_alert_form = await AlertEmailForm.create_form()
     jira_alert_form = await AlertJiraForm.create_form()
     slack_alert_form = await AlertSlackForm.create_form()
 
@@ -406,124 +460,15 @@ async def settings(cmp_id, obsc):
             'id': cl_sess_data_dict.get('db_id')}
     
     all_alert_types = await cl_data_db.get_all_data(match="alrt:*")
-    all_sdn = await cl_data_db.get_all_data(match=f"sdn:*")
 
     if all_alert_types is None:
         all_alert_types = {'':''}
 
-    if all_sdn is None:
-        all_sdn = {'':''}
-
     # URL for agent websocket connection initialization
     ws_url = f"wss://{mntr_url}/ws?id={cur_usr_id}&unm={cl_sess_data_dict.get('unm')}"
-    
-    if await sdn_form.validate_on_submit():
-        if len(all_sdn.keys()) == int(os.environ.get('SDN_COUNT')):
-            await flash(message=f"Maximum of 3 SDN controller credentials reached. Delete an existing entry to add a new one.")
-            return redirect(url_for('settings', cmp_id=cmp_id, obsc=obsc))
-        
-        sdn_id = f"sdn:{sdn_form.controller.data}:{sdn_form.fqdn.data}"
-            
-        sdn_data = {'type': sdn_form.controller.data, 
-                    'ip': sdn_form.fqdn.data, 
-                    'user': sdn_form.uname.data, 
-                    'pwd': sdn_form.password.data,
-                    'count': len(all_sdn.keys()) + 1,
-                    'id': sdn_id
-                }
-
-        if await cl_data_db.upload_db_data(id=sdn_id, data=sdn_data) is None:
-            await flash(message=f"API key gen failed...")
-            return redirect(url_for('settings', cmp_id=cmp_id, obsc=obsc))
-        
-        await flash(message=f'Controller Credentials saved to account: {cl_sess_data_dict.get('unm')}!', category='success')
-        return redirect(url_for('settings',  cmp_id=cmp_id, obsc=obsc))
-        
-    if await api_form.validate_on_submit():
-        api_type = api_form.api.data
-        api_name = f"{api_type}"
-        api_id = util_obj.key_gen(size=10)
-
-        user_data = await cl_auth_db.get_all_data(match=f'*{cl_sess_data_dict.get('unm')}*')
-
-        user_data_dict = next(iter(user_data.values()))
-
-        logger.info(user_data_dict.keys())
-
-        if api_name in list(user_data_dict.keys()):
-            await flash(message=f"{api_type} API Key already exists for {cl_sess_data_dict.get('unm')}.")
-            return redirect(url_for('settings', cmp_id=cmp_id, obsc=obsc))
-                
-        new_api_key = util_obj.generate_api_key()
-
-        updt_obj = {api_name: bcrypt.hash(new_api_key),
-                    f"{api_name}_id": api_id,
-                    f"{api_name}_rand": secrets.token_urlsafe(500),
-                    f"{api_name}_jwt_secret": secrets.token_urlsafe(500)
-                }
-
-        if await cl_data_db.upload_db_data(id=f"api_dta:{cl_sess_data_dict.get('db_id')}", data=updt_obj) is None:
-            await flash(message=f"API key gen failed...")
-            return redirect(url_for('settings', cmp_id=cmp_id, obsc=obsc))
-        
-        link = cli.create_link(secret=new_api_key, ttl=int(os.environ.get('OTS_TTL')))
-
-        await email_handler.send_email(
-            recipient=os.environ.get('SMTP_RECEIVER'),
-            subject=f"New umjiniti-core API Key Generated",
-            message=f"""
-            Hello,
-
-            A new umjiniti API key has been generated for user {cl_sess_data_dict.get('unm')}.
-
-            You can retrieve the API key using the following one-time secret link. Note that this link will expire after a single use.
-
-            API Key Retrieval Link: {link}
-
-            Thank you,
-            umjiniti Team
-            """
-        )
-        
-        await flash(message=f"{api_type} API Key has been generated and sent to the registered email address.")
-        return redirect(url_for('settings', cmp_id=cmp_id, obsc=obsc))
-           
-    if await email_alert_form.validate_on_submit():
-        all_emails = await cl_data_db.get_all_data(match=f"alrt:eml:*")
-        if all_emails is not None and len(all_emails.keys()) == int(os.environ.get('ALERT_COUNT')):
-            await flash(message=f"Maximum of 3 email alert contacts reached. Delete an existing contact to add a new one.")
-            return redirect(url_for('settings', cmp_id=cmp_id, obsc=obsc))
-        
-        count_id = len(all_emails.keys()) + 1
-        
-        email_alert_id = f"alrt:eml:{count_id}:{email_alert_form.smtp_host.data}:{email_alert_form.smtp_user.data}"
-
-        email_alert_data = {'type': 'email',
-                                'name': email_alert_form.smtp_sender.data,
-                                'tls': email_alert_form.tls_enabled.data,
-                                'host': email_alert_form.smtp_host.data,
-                                'port': email_alert_form.smtp_port.data,
-                                'user': email_alert_form.smtp_user.data,
-                                'sender': email_alert_form.smtp_sender.data,
-                                'pwd': email_alert_form.password.data,
-                                'id': email_alert_id,
-                                'count': count_id
-                            }
-            
-        if await cl_data_db.upload_db_data(id=email_alert_id, data=email_alert_data) is None:
-            await flash(message=f"Alert contact creation failed...")
-            return redirect(url_for('settings', cmp_id=cmp_id, obsc=obsc))
-        
-        await flash(message=f"Alert contact {email_alert_form.smtp_sender.data} uploaded successfully.")
-        return redirect(url_for('settings', cmp_id=cmp_id, obsc=obsc))
       
     if await jira_alert_form.validate_on_submit():
-        all_jira = await cl_data_db.get_all_data(match=f"alrt:jira:*")
-        if all_jira is not None and len(all_jira.keys()) == int(os.environ.get('ALERT_COUNT')):
-            await flash(message=f"Maximum of 3 Jira alert contacts reached. Delete an existing contact to add a new one.")
-            return redirect(url_for('settings', cmp_id=cmp_id, obsc=obsc))
-        
-        count_id = len(all_jira.keys()) + 1
+        count_id = util_obj.key_gen(size=5)
         
         jira_alert_id = f"alrt:jira:{count_id}:{jira_alert_form.email.data}"
 
@@ -544,12 +489,7 @@ async def settings(cmp_id, obsc):
         return redirect(url_for('settings', cmp_id=cmp_id, obsc=obsc))
    
     if await slack_alert_form.validate_on_submit():
-        all_slack = await cl_data_db.get_all_data(match=f"alrt:slack:*")
-        if all_slack is not None and len(all_slack.keys()) == int(os.environ.get('ALERT_COUNT')):
-            await flash(message=f"Maximum of 3 Slack alert contacts reached. Delete an existing contact to add a new one.")
-            return redirect(url_for('settings', cmp_id=cmp_id, obsc=obsc))
-        
-        count_id = len(all_slack.keys()) + 1
+        count_id = util_obj.key_gen(size=5)
         
         slack_alert_id = f"alrt:slack:{count_id}:{slack_alert_form.slack_channel_id.data}"
 
@@ -568,7 +508,7 @@ async def settings(cmp_id, obsc):
         await flash(message=f"Alert contact {slack_alert_form.slack_channel_id.data} uploaded successfully.")
         return redirect(url_for('settings', cmp_id=cmp_id, obsc=obsc))
   
-    return await render_template("app/settings.html", obsc_key=session.get('url_key'), cmp_id=cmp_id, data=data, sdn_form=sdn_form, api_form=api_form, jira_alert_form=jira_alert_form, slack_alert_form=slack_alert_form, email_alert_form=email_alert_form, cur_usr=cl_sess_data_dict.get('unm'), all_sdn=all_sdn, mntr_url=mntr_url, all_alert_types=all_alert_types, ws_url=ws_url, auth_id=cur_usr_id)
+    return await render_template("app/settings.html", obsc_key=session.get('url_key'), cmp_id=cmp_id, data=data, jira_alert_form=jira_alert_form, slack_alert_form=slack_alert_form, cur_usr=cl_sess_data_dict.get('unm'), mntr_url=mntr_url, all_alert_types=all_alert_types, ws_url=ws_url, auth_id=cur_usr_id)
 
 @app.route('/floweditor', defaults={'cmp_id': 'bcl','obsc': url_key}, methods=['GET', 'POST'])
 @app.route("/floweditor/<string:cmp_id>/<string:obsc>", methods=['GET', 'POST'])
@@ -581,19 +521,6 @@ async def floweditor(cmp_id, obsc):
     await cl_auth_db.connect_db()
     await cl_sess_db.connect_db()
     await cl_data_db.connect_db()
-
-    all_emails = await cl_data_db.get_all_data(match=f"alrt:eml:*")
-    all_jira = await cl_data_db.get_all_data(match=f"alrt:jira:*")
-    all_slack = await cl_data_db.get_all_data(match=f"alrt:slack:*")
-
-    if all_emails is None:
-        all_emails = {'':''}
-
-    if all_jira is None:
-        all_jira = {'':''}
-
-    if all_slack is None:
-        all_slack = {'':''}
 
     # Retrieve user session data
     cl_sess_data = await cl_sess_db.get_all_data(match=f"{cur_usr_id}")

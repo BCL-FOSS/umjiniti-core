@@ -6,6 +6,10 @@ from utils.Util import Util
 from wtforms.validators import ValidationError
 
 class RegisterForm(QuartForm):
+    reg_key = PasswordField('Registration Key', widget=PasswordInput(), validators=[DataRequired(), Length(min=20, max=50)])
+    email = EmailField('Email', validators=[DataRequired(), Email()])
+    fname = StringField('First Name', validators=[DataRequired(), Length(min=2, max=30)])
+    lname = StringField('Last Name', validators=[DataRequired(), Length(min=2, max=30)])
     uname = StringField('Username', validators=[DataRequired(), Length(min=5, max=15)])
     password = PasswordField(
         'Password',

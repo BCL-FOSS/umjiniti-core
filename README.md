@@ -6,9 +6,20 @@ Network Management System that leverages open source LLMs to proactively monitor
   <img width="300" height="300" src="https://github.com/BCL-FOSS/umjiniti-core/blob/main/agentapp/static/img/bcl/umjiniti.png?raw=true">
 </p>
 
+### About ###
+
+
 ### Get Started ###
 
-1. Set the necessary environment variables in the included .env
+1. Generate the OTS_KEY API key with a Basic (free tier) [onetimesecret](https://onetimesecret.com/) account.
+
+2. Generate the BREVO_API_KEY with a Free tier [Brevo CRM and marketing platform](https://www.brevo.com/) account.
+
+3. Complete the following steps for your Brevo CRM account:
+  * [Authenticate your domain with Brevo](https://help.brevo.com/hc/en-us/articles/12163873383186-Authenticate-your-domain-with-Brevo-Brevo-code-DKIM-DMARC)
+  * [Create a new sender](https://help.brevo.com/hc/en-us/articles/208836149-Create-a-new-sender-From-name-and-From-email#h_01J7K4M7R1ADHZAXN1P35QJVX4)
+
+4. Set the necessary environment variables in the included .env
 ```bash
 # onetimesecret API key for generating OTP links
 OTS_USER= # onetimesecret.com user email
@@ -17,24 +28,10 @@ OTS_TTL=300 # Time to live for OTP links in seconds (default 5 minutes)
 
 # Brevo API key for sending OTP links
 BREVO_API_KEY=
-
-# SMTP email server settings for sending OTP links
-SMTP_SERVER=
-SMTP_PORT=
-SMTP_SENDER=
-SMTP_SENDER_APP_PASSWORD=
-SMTP_RECEIVER=
+BREVO_SENDER_EMAIL= # The email you added as a sender in the previous step.
 
 # Set server URL here (must be FQDN)
 SERVER_NAME=umj.baughlabs.tech
-#SOCKET_SERVER_NAME=socket.baughlabs.tech
-
-# Enter your MCP server urls here for use within umjiniti
-MCP_URLS='["https://user.mcp1.com/mcp/", "https://user.mcp2.com/mcp/"]'
-
-# Set how many SDN controllers (UniFi, TP Link Omada) and alert contacts you want to allow
-sdn_count=1
-alert_count=3
 
 # No need to edit anything below this comment
 IP_BAN_DB=ipbanredis
@@ -50,3 +47,25 @@ RATE_LIMIT_DB_PORT=9379
 REQUEST_TIMEOUT=600
 API_TOKEN_NAME=wkflw_token
 ```
+
+5. Run the startup script. This installs and configures all necessary dependencies required by umjiniti.
+```bash
+ sudo ./init.sh
+```
+
+6. Generate an account registration key. Securely store this key as this will allow you to create your account within your umjiniti instance. Key will be delivered via email. All new users require their own key.
+
+  * Retrieve the container ID for the "umjiniti_core_socket_app" container
+```bash
+  sudo docker container ls
+```
+  * Run the 
+```bash
+  sudo docker exec -it <socket_app_container_id> python /home/quart/registration_key_gen.py -u <YOUR-USERNAME>
+```
+  * (Optional) Start a shell within the container and run the script if the above command fails
+```bash
+  sudo docker exec -it <socket_app_container_id> /bin/bash
+```
+
+7.  Visit your new umjiniti instance at the SERVER_NAME you set in the .env. Create a new account with the previously generated account registration key.

@@ -3,6 +3,7 @@ from quart import (websocket, render_template_string, make_response)
 import asyncio
 from utils.broker import Broker
 from quart import jsonify
+from quart.utils import run_sync
 import json
 from init_app import app, logger
 from quart_rate_limiter import rate_exempt
@@ -28,6 +29,7 @@ from datetime import datetime, timedelta, timezone
 from tzlocal import get_localzone
 from probe_mcp.ollamaproxy.utils.EmailAlert import EmailAlert
 from onetimesecret import OneTimeSecretCli
+from probe_mcp.ollamaproxy.utils.EmailSenderHandler import EmailSenderHandler
 
 # Session and Auth Redis DB init
 cl_sess_db = RedisDB(hostname=os.environ.get('CLIENT_SESS_DB'), 
@@ -41,22 +43,14 @@ ip_ban_db = RedisDB(hostname=os.environ.get('IP_BAN_DB'),
 # Websocket rate limit init
 ws_rate_limiter = WSRateLimiter(redis_host=os.environ.get('RATE_LIMIT_DB'), 
                                 redis_port=os.environ.get('RATE_LIMIT_DB_PORT'))
+
 broker = Broker()
 util_obj=Util()
 api_name = 'umj-api-wflw'
 auth_ping_counter = {}
 mntr_url=os.environ.get('SERVER_NAME')
 REQUIRED_OUT_OF_SCOPE_MSG = "Please provide a question or request related to network administration or the available MCP tools."
-
-email_handler = EmailAlert(
-    host=os.environ.get('SMTP_SERVER'),
-    port=int(os.environ.get('SMTP_PORT')),
-    username=os.environ.get('SMTP_SENDER'),
-    password=os.environ.get('SMTP_SENDER_APP_PASSWORD'),
-    sender=os.environ.get('SMTP_SENDER'),
-    tls=True
-)
-
+email_sender_handler = EmailSenderHandler(brevo_api_key=os.environ.get('BREVO_API_KEY'))
 cli = OneTimeSecretCli(os.environ.get('OTS_USER'), os.environ.get('OTS_KEY'), os.environ.get('REGION'))
 
 # Helper functions to quantize datetimes to 5-minute increments
@@ -378,7 +372,27 @@ async def session_watchdog(sess_id: str, check_interval: float = 5.0):
                 
     except asyncio.CancelledError:
         logger.info(f"Session watchdog for {sess_id} cancelled")
-        raise
+        # Remove tracking
+        auth_ping_counter.pop(sess_id, None)
+
+        # Remove user session profile from sess redis db/automatically invalidates active JWT tokens
+        #auth_id = request.args.get('auth_id')
+        cur_usr_id = sess_id
+
+        await cl_sess_db.connect_db()
+        if await cl_sess_db.get_all_data(match=f'{cur_usr_id}', cnfrm=True) is False:
+            return Unauthorized()
+                
+        result = await cl_sess_db.del_obj(key=cur_usr_id)
+        logger.info(f"Session {sess_id} data removal result: {result}")
+
+        # Clear JWT cookie
+        resp = jsonify({"Session": "Logged out as user ended session"})
+        resp.delete_cookie("access_token")
+        resp.delete_cookie("api_access_token")
+
+        logger.info(f"User session {sess_id} logged out due to session end")
+        return resp
     except Exception as e:
         logger.exception(f"Unhandled error in session_watchdog for {sess_id}: {e}")
 
@@ -935,7 +949,7 @@ async def resetapi():
         
         if await cl_data_db.del_obj(key=f"api_dta:{usr_data_dict['db_id']}") is not None:
 
-            api_id = util_obj.key_gen(size=10)
+            api_id = util_obj.key_gen(size=10) 
 
             new_api_key = util_obj.generate_api_key()
 
@@ -947,29 +961,28 @@ async def resetapi():
         else:
             return jsonify('API key reset failed'), 400
         
-        if await cl_data_db.upload_db_data(id=f"api_dta:{usr_data_dict['db_id']}", data=updated_api_data) is not None:
+        if await cl_data_db.upload_db_data(id=f"api_dta:{usr_data_dict['db_id']}", data=updated_api_data) > 0:
             link = cli.create_link(secret=new_api_key, ttl=int(os.environ.get('OTS_TTL')))
 
-            send_result = await email_handler.send_email_alert(
-                recipient=os.environ.get('SMTP_RECEIVER'),
-                subject=f"New umjiniti-core API Key Generated",
-                message=f"""
-                Hello,
+            html_snippet = f"""<div style="font-family: Arial, sans-serif; color: #111; line-height: 1.5;">
+                        <p>Hello,</p>
+                        <p><strong>umjiniti</strong> API key for user <strong>{usr_data_dict.get('unm')}</strong> has been reset.</p>
+                        <p>You can retrieve the API key using the following one-time secret link. Note that this link will expire after a single use.</p>
+                        <p>API Key Retrieval Link: <a href="{link}">{link}</a></p>
+                        <p>Thank you,<br/>umjiniti Team</p>
 
-                A new umjiniti API key has been generated for user {usr_data_dict.get('unm')}.
-
-                You can retrieve the API key using the following one-time secret link. Note that this link will expire after a single use.
-
-                API Key Retrieval Link: {link}
-
-                Thank you,
-                umjiniti Team
-                """
-            )
-            logger.info(f"API key reset email send result: {send_result}")
+                        </div>"""
+            send_result = await run_sync(email_sender_handler.send_transactional_email(sender={'name': 'umjiniti Admin', 'email': os.environ.get('BREVO_SENDER_EMAIL')},
+                                                                                 to=[{"name": usr_data_dict.get('unm'), "email": usr_data_dict.get('eml')}],
+                                                                                 subject=f"umjiniti-core API Key Reset for {usr_data_dict.get('unm')}",
+                                                                                 html_content=html_snippet
+                                                                                 ))
+                
             if send_result is None:
                 logger.error("Failed to send API key reset email")
                 return jsonify('API key reset failed'), 400
+
+            logger.info(f"API key reset email send result: {send_result}")
             return jsonify('API key reset successful. Check your email for the new API key.')
         else:
             return jsonify('API key reset failed'), 400
@@ -980,11 +993,92 @@ async def resetapi():
     except InvalidTokenError as e:
         logger.error(f"JWT invalid: {e}")
         return InvalidTokenError()
-        
-@app.errorhandler(Unauthorized)
-async def unauthorized_access():
-    return await render_template_string(json.dumps({"error": "Authentication error"})), 401
+    
+@app.route('/createapi', methods=['POST'])
+async def createapi():
+    jwt_token = request.cookies.get("access_token")
+    sess_id = request.args.get('sess_id')
 
+    if not jwt_token or not sess_id:
+        return jsonify(error="Missing required request data"), 400
+
+    await cl_sess_db.connect_db()
+    await cl_data_db.connect_db()
+
+    if await cl_sess_db.get_all_data(match=f'*{sess_id}*', cnfrm=True) is False:
+        return Unauthorized()
+
+    try:
+        usr_sess_data = await cl_sess_db.get_all_data(match=f'*{sess_id}*')
+        logger.info(usr_sess_data)
+        usr_data_dict = next(iter(usr_sess_data.values()))
+        logger.info(usr_data_dict)
+
+        jwt_key = usr_data_dict.get(f'usr_jwt_secret')
+        logger.info(jwt_key)
+        decoded_token = jwt.decode(jwt=jwt_token, key=jwt_key , algorithms=["HS256"])
+        logger.info(decoded_token)
+
+        if decoded_token.get('rand') != usr_data_dict.get(f'usr_rand'):
+            return Unauthorized()
+
+        
+        api_id = util_obj.key_gen(size=10)
+        new_api_key = util_obj.generate_api_key()
+        
+        updated_api_data = {api_name: bcrypt.hash(new_api_key),
+                            f"{api_name}_id": api_id,
+                            f"{api_name}_rand": secrets.token_urlsafe(500),
+                            f"{api_name}_jwt_secret": secrets.token_urlsafe(500)
+                        }
+
+        if await cl_data_db.upload_db_data(id=f"api_dta:{usr_data_dict['db_id']}", data=updated_api_data) > 0:
+            link = cli.create_link(secret=new_api_key, ttl=int(os.environ.get('OTS_TTL')))
+
+            check_contact = await run_sync(email_sender_handler.get_contact(user_id=usr_data_dict.get('db_id')))
+
+            if check_contact is None:
+                contact_data = {"LASTNAME": usr_data_dict.get('lname'),
+                                "FIRSTNAME": usr_data_dict.get('fname'),
+                                }
+                new_contact_result = await run_sync(email_sender_handler.add_contact(email=usr_data_dict.get('eml'),
+                                                                ext_id=usr_data_dict.get('db_id'), attributes=contact_data
+                                                            ))
+                if new_contact_result is None:
+                    logger.error("Failed to create new contact for API key creation email")
+                    return jsonify('Brevo contact creation failed'), 400
+                
+            html_snippet = f"""<div style="font-family: Arial, sans-serif; color: #111; line-height: 1.5;">
+                        <p>Hello,</p>
+                        <p>A new <strong>umjiniti</strong> API key has been generated for user <strong>{usr_data_dict.get('unm')}</strong>.</p>
+                        <p>You can retrieve the API key using the following one-time secret link. Note that this link will expire after a single use.</p>
+                        <p>API Key Retrieval Link: <a href="{link}">{link}</a></p>
+                        <p>Thank you,<br/>umjiniti Team</p>
+
+                        </div>"""
+            send_result = await run_sync(email_sender_handler.send_transactional_email(sender={'name': 'umjiniti Admin', 'email': os.environ.get('BREVO_SENDER_EMAIL')},
+                                                                                 to=[{"name": usr_data_dict.get('unm'), "email": usr_data_dict.get('eml')}],
+                                                                                 subject=f"New umjiniti-core API Key Generated for {usr_data_dict.get('unm')}",
+                                                                                 html_content=html_snippet
+                                                                                 ))
+                
+            if send_result is None:
+                logger.error("Failed to send API key creation email")
+                return jsonify('API key creation failed'), 400
+
+            logger.info(f"API key creation email send result: {send_result}")
+            return jsonify('API key creation successful. Check your email for the new API key.')
+                    
+        else:
+            return jsonify('API key creation failed'), 400
+
+    except ExpiredSignatureError:
+        logger.warning("JWT expired, need to refresh token")
+        return ExpiredSignatureError()
+    except InvalidTokenError as e:
+        logger.error(f"JWT invalid: {e}")
+        return InvalidTokenError()
+    
 @app.errorhandler(ExpiredSignatureError)
 async def token_expired():
     return await render_template_string(json.dumps({"error": "Token expired"})), 1008
