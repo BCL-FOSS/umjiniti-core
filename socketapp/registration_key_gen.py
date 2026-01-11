@@ -5,6 +5,10 @@ import asyncio
 import argparse
 import os
 from passlib.hash import bcrypt
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 cl_auth_db = RedisDB(hostname=os.environ.get('CLIENT_AUTH_DB'), 
                      port=os.environ.get('CLIENT_AUTH_DB_PORT'))
@@ -23,9 +27,11 @@ async def generate_registration_key(user: str):
                     "id": reg_key_id}
 
     if await cl_auth_db.upload_db_data(id=reg_key_id, data=reg_key_data) > 0:
-        print("Registration key gen failed...")
-    else:
+        logger.info(f"Registration key generated for user '{user}'")
         print(f"Registration key generated for user '{user}':\n {key}")
+    else:
+        print("Registration key gen failed...")
+        
 
 
 if __name__ == "__main__":
