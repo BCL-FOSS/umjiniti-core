@@ -1122,44 +1122,6 @@ async def createapi():
         logger.error(f"JWT invalid: {e}")
         return InvalidTokenError()
     
-@app.route('/createalert', methods=['GET'])
-async def createalert():
-    jwt_token = request.cookies.get("access_token")
-    sess_id = request.args.get('sess_id')
-
-    if not jwt_token or not sess_id:
-        return jsonify(error="Missing required request data"), 400
-
-    await cl_sess_db.connect_db()
-    await cl_data_db.connect_db()
-
-    if await cl_sess_db.get_all_data(match=f'*{sess_id}*', cnfrm=True) is False:
-        await ip_blocker(auto_ban=True)
-        return Unauthorized()
-
-    try:
-        usr_sess_data = await cl_sess_db.get_all_data(match=f'*{sess_id}*')
-        logger.info(usr_sess_data)
-        usr_data_dict = next(iter(usr_sess_data.values()))
-        logger.info(usr_data_dict)
-
-        jwt_key = usr_data_dict.get(f'usr_jwt_secret')
-        logger.info(jwt_key)
-        decoded_token = jwt.decode(jwt=jwt_token, key=jwt_key , algorithms=["HS256"])
-        logger.info(decoded_token)
-
-        if decoded_token.get('rand') != usr_data_dict.get(f'usr_rand'):
-            await ip_blocker(auto_ban=True)
-            return Unauthorized()
-        
-    except ExpiredSignatureError:
-        logger.warning("JWT expired, need to refresh token")
-        return ExpiredSignatureError()
-    except InvalidTokenError as e:
-        logger.error(f"JWT invalid: {e}")
-        return InvalidTokenError()
-    
-    
 @app.errorhandler(ExpiredSignatureError)
 async def token_expired():
     return await render_template_string(json.dumps({"error": "Token expired"})), 1008

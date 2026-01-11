@@ -55,7 +55,7 @@ MAX_AUTH_ATTEMPTS=3
  sudo ./init.sh
 ```
 
-6. Generate an account registration key. Securely store this key as this will allow you to create your account within your umjiniti instance. Key will be delivered via email. All new users require their own key.
+6. Generate an account registration key. Securely store this key as this will allow you to create your account within your umjiniti instance. All new users require their own key.
 
   * Retrieve the container ID for the "umjiniti_core_socket_app" container
 ```bash

@@ -5,7 +5,7 @@ from forms.LoginForm import LoginForm
 from forms.RegisterForm import RegisterForm
 from forms.AlertJiraForm import AlertJiraForm
 from forms.AlertSlackForm import AlertSlackForm
-from quart import (render_template_string, render_template, flash, redirect, url_for, session, request, jsonify, abort)
+from quart import (render_template_string, render_template, flash, redirect, url_for, session, request, abort)
 from quart_wtf.csrf import CSRFError
 from quart_auth import (
     Action
@@ -19,18 +19,7 @@ import os
 from passlib.hash import bcrypt
 import secrets
 import jwt
-from datetime import datetime, timedelta, timezone
-from tzlocal import get_localzone
-from onetimesecret import OneTimeSecretCli
-from utils.EmailHandler import EmailHandler
-
-cli = OneTimeSecretCli(os.environ.get('OTS_USER'), os.environ.get('OTS_KEY'), os.environ.get('REGION'))
-email_handler = EmailHandler(host=os.environ.get('SMTP_SERVER'),
-                             port=int(os.environ.get('SMTP_PORT')),
-                             username=os.environ.get('SMTP_SENDER'),
-                             password=os.environ.get('SMTP_SENDER_APP_PASSWORD'),
-                             sender=os.environ.get('SMTP_SENDER'),
-                             tls=True)
+from datetime import datetime, timezone
 
 util_obj = Util()
 url_key = util_obj.key_gen(size=100)
@@ -51,35 +40,7 @@ max_auth_attempts=int(os.environ.get('MAX_AUTH_ATTEMPTS'))
 auth_attempts={}
 reg_attempts={}
 
-async def ip_blocker_reg(auto_ban: bool = False):
-    if auto_ban is True:
-        await ip_ban_db.connect_db()
-        now = datetime.now(tz=timezone.utc)
-        ban_data = {'ip': request.access_route[-1],
-                                    'banned_at': now.isoformat()}
-        if await ip_ban_db.upload_db_data(id=f"blocked_ip:{request.access_route[-1]}", data=ban_data) > 0:
-            logger.warning(f"Max authentication attempts reached for {request.access_route[-1]}. Blocking further attempts.")
-            reg_attempts.pop(request.access_route[-1], None)
-            #abort(403) 
-        
-    if request.access_route[-1] not in reg_attempts:
-        reg_attempts[request.access_route[-1]] = 1
-
-    if reg_attempts[request.access_route[-1]] != max_auth_attempts:
-        reg_attempts[request.access_route[-1]] += 1
-        await flash(message=f'Try again...', category='danger')
-        return redirect(url_for('login'))
-    else:
-        await ip_ban_db.connect_db()
-        now = datetime.now(tz=timezone.utc)
-        ban_data = {'ip': request.access_route[-1],
-                                    'banned_at': now.isoformat()}
-        if await ip_ban_db.upload_db_data(id=f"blocked_ip:{request.access_route[-1]}", data=ban_data) > 0:
-            logger.warning(f"Max authentication attempts reached for {request.access_route[-1]}. Blocking further attempts.")
-            reg_attempts.pop(request.access_route[-1], None)
-            #abort(403) 
-
-async def ip_blocker_login(auto_ban: bool = False):
+async def ip_blocker(auto_ban: bool = False):
     if auto_ban is True:
         await ip_ban_db.connect_db()
         now = datetime.now(tz=timezone.utc)
@@ -127,32 +88,38 @@ def user_login_required(func):
 
         auth_id = current_client.auth_id
 
-        if auth_id is not None or "".strip() and await cl_sess_db.get_all_data(match=f"{auth_id}", cnfrm=True) is True:
-            jwt_token = request.cookies.get("access_token")
-            logger.info(f"JWT Token from cookie: {jwt_token}")
-            account_data = await cl_sess_db.get_all_data(match=f'*{auth_id}*')
-            if account_data is not None:
-                      
-                logger.info(account_data)
-                sub_dict = next(iter(account_data.values()))
-                logger.info(sub_dict)
-
-                jwt_key = sub_dict.get('usr_jwt_secret')
-                logger.info(jwt_key)
-                decoded_token = jwt.decode(jwt=jwt_token, key=jwt_key , algorithms=["HS256"])
-                logger.info(decoded_token)
-
-                if decoded_token.get('rand') == sub_dict.get('usr_rand'):
-                    return await app.ensure_async(func)(*args, **kwargs)
-                else:
-                    await ip_ban_db.connect_db()
-                    now = datetime.now(tz=timezone.utc)
-                    ban_data = {'ip': request.access_route[-1],
-                                            'banned_at': now.isoformat()}
-                    if await ip_ban_db.upload_db_data(id=f"blocked_ip:{request.access_route[-1]}", data=ban_data) is not None:
-                        return Unauthorized()
-        else:
+        if auth_id is None or "".strip() or await cl_sess_db.get_all_data(match=f"{auth_id}", cnfrm=True) is False or jwt_token is None or "".strip():
+            await ip_blocker(auto_ban=True)
             return Unauthorized()
+        
+        jwt_token = request.cookies.get("access_token")
+        logger.info(f"JWT Token from cookie: {jwt_token}")
+        account_data = await cl_sess_db.get_all_data(match=f'*{auth_id}*')
+        if account_data is not None:          
+            logger.info(account_data)
+            sub_dict = next(iter(account_data.values()))
+            logger.info(sub_dict)
+
+            jwt_key = sub_dict.get('usr_jwt_secret')
+            logger.info(jwt_key)
+            try:
+                decoded_token = jwt.decode(jwt=jwt_token, key=jwt_key , algorithms=["HS256"])
+            except jwt.InvalidTokenError:
+                await ip_blocker(auto_ban=True)
+                return Unauthorized()
+            except jwt.ExpiredSignatureError:
+                await ip_blocker(auto_ban=True)
+                return Unauthorized()
+            except jwt.DecodeError:
+                await ip_blocker(auto_ban=True)
+                return Unauthorized()
+            logger.info(decoded_token)
+
+            if decoded_token.get('rand') != sub_dict.get('usr_rand'):
+                await ip_blocker(auto_ban=True)
+                return Unauthorized()
+                    
+            return await app.ensure_async(func)(*args, **kwargs)
     return wrapper
 
 @app.before_request
@@ -184,47 +151,51 @@ async def login():
             await cl_sess_db.connect_db()
             await cl_data_db.connect_db()
 
-            if await cl_auth_db.get_all_data(match=f'*{username}*', cnfrm=True) is True:
-              
-                account_data = await cl_auth_db.get_all_data(match=f'*{username}*')
-                logger.info(account_data)
-                sub_dict = next(iter(account_data.values()))
-                logger.info(sub_dict)
-                password_hash = sub_dict.get('pwd')
+            if await cl_auth_db.get_all_data(match=f'*{username}*', cnfrm=True) is False:
+                await flash(message='Create an account...', category='danger')
+                return redirect(url_for('register'))
+
+            account_data = await cl_auth_db.get_all_data(match=f'*{username}*')
+            logger.info(account_data)
+            sub_dict = next(iter(account_data.values()))
+            logger.info(sub_dict)
+            password_hash = sub_dict.get('pwd')
                 
-                if account_data and bcrypt.verify(password, password_hash):
-                    logger.info(f'Account credentials verified for {username}')
-                    # Assign session ID for authenticated account
-                    session_id = util_obj.gen_id()
+            if account_data and bcrypt.verify(password, password_hash) is False:
+                await ip_blocker()
+                return Unauthorized()
+            
+            logger.info(f'Account credentials verified for {username}')
+            # Assign session ID for authenticated account
+            session_id = util_obj.gen_id()
 
-                    # Client sign in and account sess. data -> sess-redis
-                    client_auth.login_user(Client(auth_id=session_id, action=Action.WRITE))
+            # Client sign in and account sess. data -> sess-redis
+            client_auth.login_user(Client(auth_id=session_id, action=Action.WRITE))
 
-                    await cl_sess_db.connect_db()
+            await cl_sess_db.connect_db()
 
-                    # Pop password to mitigate potential leaks from redis session storage
-                    sub_dict.pop('pwd')
+            # Pop password to mitigate potential leaks from redis session storage
+            sub_dict.pop('pwd')
 
-                    # Generate user JWT data
-                    usr_rand=secrets.token_urlsafe(500)
-                    usr_jwt_secret=secrets.token_urlsafe(500)
+            # Generate user JWT data
+            usr_rand=secrets.token_urlsafe(500)
+            usr_jwt_secret=secrets.token_urlsafe(500)
 
-                    # Add JWT data to user session profile for upload to session redis db
-                    sub_dict["usr_rand"] = usr_rand
-                    sub_dict["usr_jwt_secret"] = usr_jwt_secret
-                    logger.info(sub_dict)
+            # Add JWT data to user session profile for upload to session redis db
+            sub_dict["usr_rand"] = usr_rand
+            sub_dict["usr_jwt_secret"] = usr_jwt_secret
+            logger.info(sub_dict)
 
-                    # Generate user JWT to authenticate initial agent websocket connection
-                    usr_jwt_token = util_obj.generate_ephemeral_token(user_id=session_id, secret_key=usr_jwt_secret, user_rand=usr_rand)
+            # Generate user JWT to authenticate initial agent websocket connection
+            usr_jwt_token = util_obj.generate_ephemeral_token(user_id=session_id, secret_key=usr_jwt_secret, user_rand=usr_rand)
                         
-                    if await cl_sess_db.upload_db_data(id=session_id, data=sub_dict) > 0:
-                        # db_id = sub_dict.get('db_id')
-                        rndm_cmp_id=util_obj.key_gen(size=100)
-                        session['url_key'] = util_obj.key_gen(size=100)
+            if await cl_sess_db.upload_db_data(id=session_id, data=sub_dict) > 0:
+                rndm_cmp_id=util_obj.key_gen(size=100)
+                session['url_key'] = util_obj.key_gen(size=100)
 
-                        resp = redirect(url_for('dashboard', cmp_id=rndm_cmp_id, obsc=session.get('url_key')))
+                resp = redirect(url_for('dashboard', cmp_id=rndm_cmp_id, obsc=session.get('url_key')))
 
-                        resp.set_cookie(
+                resp.set_cookie(
                             "access_token",
                             usr_jwt_token,
                             httponly=True,
@@ -233,22 +204,22 @@ async def login():
                             max_age=None      # 1 hour: 3600
                         )
 
-                        if await cl_data_db.get_all_data(match=f"api_dta:{sub_dict.get('db_id')}", cnfrm=True) is False:
-                            logger.info("User JWT token set in cookie.")
-                            await flash(message=f'Authentication successful for {sub_dict.get('unm')}!', category='success')
-                            return resp
+                if await cl_data_db.get_all_data(match=f"api_dta:{sub_dict.get('db_id')}", cnfrm=True) is False:
+                    logger.info("User JWT token set in cookie.")
+                    await flash(message=f'Authentication successful for {sub_dict.get('unm')}!', category='success')
+                    return resp
                            
-                        else:
-                            api_data = await cl_data_db.get_all_data(match=f"api_dta:{sub_dict.get('db_id')}")
-                            api_data_sub_dict = next(iter(api_data.values()))
+                else:
+                    api_data = await cl_data_db.get_all_data(match=f"api_dta:{sub_dict.get('db_id')}")
+                    api_data_sub_dict = next(iter(api_data.values()))
 
-                            api_jwt_key = api_data_sub_dict.get(f'{api_name}_jwt_secret')
-                            api_rand = api_data_sub_dict.get(f'{api_name}_rand')
-                            api_id = api_data_sub_dict.get(f'{api_name}_id')
+                    api_jwt_key = api_data_sub_dict.get(f'{api_name}_jwt_secret')
+                    api_rand = api_data_sub_dict.get(f'{api_name}_rand')
+                    api_id = api_data_sub_dict.get(f'{api_name}_id')
                         
-                            jwt_token = util_obj.generate_ephemeral_token(user_id=api_id, secret_key=api_jwt_key, user_rand=api_rand)
+                    jwt_token = util_obj.generate_ephemeral_token(user_id=api_id, secret_key=api_jwt_key, user_rand=api_rand)
 
-                            resp.set_cookie(
+                    resp.set_cookie(
                                 "api_access_token",
                                 jwt_token,
                                 httponly=True,
@@ -257,18 +228,10 @@ async def login():
                                 max_age=None      # 1 hour: 3600
                             )
 
-                            logger.info("API JWT token set in cookie.")
+                    logger.info("API JWT token set in cookie.")
 
-                            await flash(message=f'Authentication successful for {sub_dict.get('unm')}!', category='success')
-                            return resp
-
-                else:
-                    await ip_blocker_login()
-                    return redirect(url_for('login'))
-                    
-            else:
-                await flash(message='Create an account...', category='danger')
-                return redirect(url_for('register'))
+                    await flash(message=f'Authentication successful for {sub_dict.get('unm')}!', category='success')
+                    return resp
 
         return await render_template('index/login.html', form=form)
     except Exception as e:
@@ -292,7 +255,7 @@ async def register():
             await cl_auth_db.connect_db()
 
             if await cl_auth_db.get_all_data(match=f"reg_key:{username}:*", cnfrm=True) is False or reg_key is None:
-                await ip_blocker_reg()
+                await ip_blocker()
                 return Unauthorized()
                 
             reg_key_data = await cl_auth_db.get_all_data(match=f"reg_key:{username}:*")
@@ -302,7 +265,7 @@ async def register():
             logger.info(reg_key_sub_dict)
 
             if bcrypt.verify(secret=reg_key, hash=reg_key_sub_dict.get("reg_key")) is False:
-                await ip_blocker_reg()
+                await ip_blocker()
                 return Unauthorized()
 
             password = form.password.data
@@ -365,7 +328,7 @@ async def logout(auth_id):
 
         await cl_sess_db.connect_db()
         if await cl_sess_db.get_all_data(match=f'{cur_usr_id}', cnfrm=True) is False:
-            await ip_blocker_reg(auto_ban=True)
+            await ip_blocker(auto_ban=True)
             return Unauthorized()
         
         result = await cl_sess_db.del_obj(key=cur_usr_id)
