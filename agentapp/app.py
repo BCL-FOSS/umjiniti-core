@@ -87,12 +87,12 @@ def user_login_required(func):
         await cl_auth_db.connect_db()
 
         auth_id = current_client.auth_id
+        jwt_token = request.cookies.get("access_token")
 
         if auth_id is None or "".strip() or await cl_sess_db.get_all_data(match=f"{auth_id}", cnfrm=True) is False or jwt_token is None or "".strip():
             await ip_blocker(auto_ban=True)
             return Unauthorized()
         
-        jwt_token = request.cookies.get("access_token")
         logger.info(f"JWT Token from cookie: {jwt_token}")
         account_data = await cl_sess_db.get_all_data(match=f'*{auth_id}*')
         if account_data is not None:          
