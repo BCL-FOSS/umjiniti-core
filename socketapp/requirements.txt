@@ -22,3 +22,4 @@ langchain-community
 langgraph-supervisor
 onetimesecret
 aiosmtplib==4.0.2
+brevo-python==1.2.0
