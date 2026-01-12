@@ -1102,7 +1102,7 @@ async def createapi():
                                                             ))()
             logger.info(f"Brevo contact creation result: {new_contact_result}")
 
-            if new_contact_result is None:
+            if isinstance(new_contact_result, dict) is False or new_contact_result.get('id') is None:
                 logger.error("Failed to create new contact for API key creation email")
                 return jsonify('Brevo contact creation failed'), 400
                 
@@ -1119,6 +1119,8 @@ async def createapi():
                                                                                  subject=f"New umjiniti-core API Key Generated for {usr_data_dict.get('unm')}",
                                                                                  html_content=html_snippet
                                                                                  ))()
+            
+            logger.info(f"API key creation email send result: {send_result}")
                 
             if send_result is None:
                 logger.error("Failed to send API key creation email")
