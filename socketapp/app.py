@@ -1102,9 +1102,8 @@ async def createapi():
                                                             ))()
             logger.info(f"Brevo contact creation result: {new_contact_result}")
 
-            if isinstance(new_contact_result, dict) is False or new_contact_result.get('id') is None:
-                logger.error("Failed to create new contact for API key creation email")
-                return jsonify('Brevo contact creation failed'), 400
+            if isinstance(new_contact_result, dict) is True or new_contact_result.get('id') is not None:
+                logger.info(f"Contact {usr_data_dict.get('eml')} added/updated successfully in Brevo: {new_contact_result}")
                 
             html_snippet = f"""<div style="font-family: Arial, sans-serif; color: #111; line-height: 1.5;">
                         <p>Hello,</p>
