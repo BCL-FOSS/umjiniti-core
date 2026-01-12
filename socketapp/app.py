@@ -1100,7 +1100,7 @@ async def createapi():
             new_contact_result = await run_sync(lambda: email_sender_handler.add_contact(email=usr_data_dict.get('eml'),
                                                                 ext_id=usr_data_dict.get('db_id'), attributes=contact_data
                                                             ))()
-            logger.info(f"Brevo contact creation result: {new_contact_result['id']}")
+            logger.info(f"New contact creation result: {new_contact_result}")
                 
             html_snippet = f"""<div style="font-family: Arial, sans-serif; color: #111; line-height: 1.5;">
                         <p>Hello,</p>
@@ -1117,12 +1117,7 @@ async def createapi():
                                                                                  ))()
             
             logger.info(f"API key creation email send result: {send_result}")
-                
-            if send_result is None:
-                logger.error("Failed to send API key creation email")
-                return jsonify('API key creation failed'), 400
 
-            logger.info(f"API key creation email send result: {send_result}")
             return jsonify('API key creation successful. Check your email for the new API key.')
                     
         else:
