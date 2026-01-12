@@ -151,11 +151,11 @@ async def login():
             await cl_sess_db.connect_db()
             await cl_data_db.connect_db()
 
-            if await cl_auth_db.get_all_data(match=f'*{username}*', cnfrm=True) is False:
+            if await cl_auth_db.get_all_data(match=f'*uid:{username}*', cnfrm=True) is False:
                 await flash(message='Create an account...', category='danger')
                 return redirect(url_for('register'))
 
-            account_data = await cl_auth_db.get_all_data(match=f'*{username}*')
+            account_data = await cl_auth_db.get_all_data(match=f'*uid:{username}*')
             logger.info(account_data)
             sub_dict = next(iter(account_data.values()))
             logger.info(sub_dict)
@@ -204,13 +204,13 @@ async def login():
                             max_age=None      # 1 hour: 3600
                         )
 
-                if await cl_data_db.get_all_data(match=f"api_dta:{sub_dict.get('db_id')}", cnfrm=True) is False:
+                if await cl_data_db.get_all_data(match=f"api_dta:{sub_dict.get('db_id')}*", cnfrm=True) is False:
                     logger.info("User JWT token set in cookie.")
                     await flash(message=f'Authentication successful for {sub_dict.get('unm')}!', category='success')
                     return resp
                            
                 else:
-                    api_data = await cl_data_db.get_all_data(match=f"api_dta:{sub_dict.get('db_id')}")
+                    api_data = await cl_data_db.get_all_data(match=f"api_dta:{sub_dict.get('db_id')}*")
                     api_data_sub_dict = next(iter(api_data.values()))
 
                     api_jwt_key = api_data_sub_dict.get(f'{api_name}_jwt_secret')
