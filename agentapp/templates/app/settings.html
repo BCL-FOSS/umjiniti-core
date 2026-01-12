@@ -141,7 +141,6 @@
       <div class="modal-body">
           <form method="POST">
             {{ jira_alert_form.hidden_tag() }}
-            <!--{{ sdn_form.csrf_token }}-->
             <div class="form-floating mb-3">
               <label>{{ jira_alert_form.cloud_id.label }}</label>
               {{ jira_alert_form.cloud_id(class="form-control") }}
@@ -173,7 +172,6 @@
       <div class="modal-body">
           <form method="POST">
             {{ slack_alert_form.hidden_tag() }}
-            <!--{{ sdn_form.csrf_token }}-->
             <div class="form-floating mb-3">
               <label>{{ slack_alert_form.slack_token.label }}</label>
               {{ slack_alert_form.slack_token(class="form-control") }}
