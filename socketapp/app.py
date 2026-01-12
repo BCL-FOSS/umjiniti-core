@@ -1097,7 +1097,7 @@ async def createapi():
             contact_data = {"LASTNAME": usr_data_dict.get('lname'),
                                 "FIRSTNAME": usr_data_dict.get('fname'),
                                 }
-            new_contact_result = await run_sync(email_sender_handler.add_contact(email=usr_data_dict.get('eml'),
+            new_contact_result = await run_sync(lambda: email_sender_handler.add_contact(email=usr_data_dict.get('eml'),
                                                                 ext_id=usr_data_dict.get('db_id'), attributes=contact_data
                                                             ))()
             logger.info(f"Brevo contact creation result: {new_contact_result}")
@@ -1114,7 +1114,7 @@ async def createapi():
                         <p>Thank you,<br/>umjiniti Team</p>
 
                         </div>"""
-            send_result = await run_sync(email_sender_handler.send_transactional_email(sender={'name': 'umjiniti Admin', 'email': os.environ.get('BREVO_SENDER_EMAIL')},
+            send_result = await run_sync(lambda: email_sender_handler.send_transactional_email(sender={'name': 'umjiniti Admin', 'email': os.environ.get('BREVO_SENDER_EMAIL')},
                                                                                  to=[{"name": usr_data_dict.get('unm'), "email": usr_data_dict.get('eml')}],
                                                                                  subject=f"New umjiniti-core API Key Generated for {usr_data_dict.get('unm')}",
                                                                                  html_content=html_snippet
