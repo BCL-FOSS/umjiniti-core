@@ -41,14 +41,14 @@
         <div class="d-flex justify-content-between align-items-end">
           <div class="d-flex align-items-center">
             <div class="avatar avatar-xl position-relative me-3">
-              <img src="../assets/img/bruce-mars.jpg" alt="profile_image" class="w-100 border-radius-lg shadow-sm">
+              <img src="{{ url_for('static', filename='img/bruce-mars.jpg') }}" alt="profile_image" class="w-100 border-radius-lg shadow-sm"/>
             </div>
             <div>
               <h5 class="mb-1 text-white font-weight-bolder">
-                {{ data.get('unm') }}
+                {{ data.get('fnm') }} {{ data.get('lnm') }}
               </h5>
               <p class="mb-0 text-white text-sm">
-                User Settings
+                User Settings for {{ data.get('unm') }}
               </p>
             </div>
           </div>

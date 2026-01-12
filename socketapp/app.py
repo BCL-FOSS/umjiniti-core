@@ -1025,15 +1025,11 @@ async def resetapi():
                         <p>Thank you,<br/>umjiniti Team</p>
 
                         </div>"""
-            send_result = await run_sync(email_sender_handler.send_transactional_email(sender={'name': 'umjiniti Admin', 'email': os.environ.get('BREVO_SENDER_EMAIL')},
+            send_result = await run_sync(lambda: email_sender_handler.send_transactional_email(sender={'name': 'umjiniti Admin', 'email': os.environ.get('BREVO_SENDER_EMAIL')},
                                                                                  to=[{"name": usr_data_dict.get('unm'), "email": usr_data_dict.get('eml')}],
                                                                                  subject=f"umjiniti-core API Key Reset for {usr_data_dict.get('unm')}",
                                                                                  html_content=html_snippet
                                                                                  ))()
-                
-            if send_result is None:
-                logger.error("Failed to send API key reset email")
-                return jsonify('API key reset failed'), 400
 
             logger.info(f"API key reset email send result: {send_result}")
             return jsonify('API key reset successful. Check your email for the new API key.')

@@ -370,6 +370,12 @@ async def dashboard(cmp_id, obsc):
 
     cur_usr = cl_sess_data_dict.get('unm')
 
+    data = {'unm': cl_sess_data_dict.get('unm'),
+            'id': cl_sess_data_dict.get('db_id'),
+            'fnm': cl_sess_data_dict.get('fname'),
+            'lnm': cl_sess_data_dict.get('lname'),
+            'eml': cl_sess_data_dict.get('eml')}
+
     # Retrieve user data from auth db
     main_user_data = await cl_auth_db.get_all_data(match=f'*{cl_sess_data_dict.get('unm')}*')
     logger.info(main_user_data)
@@ -377,7 +383,7 @@ async def dashboard(cmp_id, obsc):
     # URL for agent websocket connection initialization
     ws_url = f"wss://{mntr_url}/ws?id={cur_usr_id}&unm={cl_sess_data_dict.get('unm')}"
 
-    return await render_template("app/dashboard.html", obsc_key=session.get('url_key'), cmp_id=cmp_id, auth_id=cur_usr_id, ws_url=ws_url, cur_usr=cur_usr)
+    return await render_template("app/dashboard.html", obsc_key=session.get('url_key'), cmp_id=cmp_id, auth_id=cur_usr_id, ws_url=ws_url, cur_usr=cur_usr, data=data)
 
 @app.route('/agent', defaults={'cmp_id': url_cmp_id,'obsc': url_key}, methods=['GET', 'POST'])
 @app.route("/agent/<string:cmp_id>/<string:obsc>", methods=['GET', 'POST'])
@@ -396,6 +402,12 @@ async def agent(cmp_id, obsc):
 
     cur_usr = cl_sess_data_dict.get('unm')
 
+    data = {'unm': cl_sess_data_dict.get('unm'),
+            'id': cl_sess_data_dict.get('db_id'),
+            'fnm': cl_sess_data_dict.get('fname'),
+            'lnm': cl_sess_data_dict.get('lname'),
+            'eml': cl_sess_data_dict.get('eml')}
+
     # URL for agent websocket connection initialization
     ws_url = f"wss://{mntr_url}/ws?id={cur_usr_id}&unm={cl_sess_data_dict.get('unm')}"
 
@@ -408,7 +420,7 @@ async def agent(cmp_id, obsc):
 
     logger.info(mcp_urls)
 
-    return await render_template("app/agent.html", obsc_key=session.get('url_key'), ws_url=ws_url, cmp_id=cmp_id, user=cl_sess_data_dict.get('unm'), options=mcp_urls, mntr_url=mntr_url, cur_usr=cur_usr, auth_id=cur_usr_id)
+    return await render_template("app/agent.html", obsc_key=session.get('url_key'), ws_url=ws_url, cmp_id=cmp_id, user=cl_sess_data_dict.get('unm'), options=mcp_urls, mntr_url=mntr_url, cur_usr=cur_usr, auth_id=cur_usr_id, data=data)
 
 @app.route('/settings', defaults={'cmp_id': url_cmp_id,'obsc': url_key}, methods=['GET', 'POST'])
 @app.route("/settings/<string:cmp_id>/<string:obsc>", methods=['GET', 'POST'])
@@ -431,7 +443,10 @@ async def settings(cmp_id, obsc):
     cur_usr = cl_sess_data_dict.get('unm')
 
     data = {'unm': cl_sess_data_dict.get('unm'),
-            'id': cl_sess_data_dict.get('db_id')}
+            'id': cl_sess_data_dict.get('db_id'),
+            'fnm': cl_sess_data_dict.get('fname'),
+            'lnm': cl_sess_data_dict.get('lname'),
+            'eml': cl_sess_data_dict.get('eml')}
     
     all_alert_types = await cl_data_db.get_all_data(match="alrt:*")
 
@@ -503,6 +518,12 @@ async def floweditor(cmp_id, obsc):
 
     cur_usr = cl_sess_data_dict.get('unm')
 
+    data = {'unm': cl_sess_data_dict.get('unm'),
+            'id': cl_sess_data_dict.get('db_id'),
+            'fnm': cl_sess_data_dict.get('fname'),
+            'lnm': cl_sess_data_dict.get('lname'),
+            'eml': cl_sess_data_dict.get('eml')}
+
     # URL for agent websocket connection initialization
     ws_url = f"wss://{mntr_url}/ws?id={cur_usr_id}&unm={cl_sess_data_dict.get('unm')}"
 
@@ -519,7 +540,7 @@ async def floweditor(cmp_id, obsc):
 
     return await render_template("app/floweditor.html", obsc_key=session.get('url_key') ,
                                 cmp_id=cmp_id, all_probes=probe_data, mntr_url=mntr_url, 
-                                user=cl_sess_data_dict.get('unm'), flows=all_flows, cur_usr=cur_usr, ws_url=ws_url, auth_id=cur_usr_id)
+                                user=cl_sess_data_dict.get('unm'), flows=all_flows, cur_usr=cur_usr, ws_url=ws_url, auth_id=cur_usr_id, data=data)
 
 @app.route('/probes', defaults={'cmp_id': 'bcl','obsc': url_key}, methods=['GET', 'POST'])
 @app.route("/probes/<string:cmp_id>/<string:obsc>", methods=['GET', 'POST'])
@@ -540,6 +561,12 @@ async def probes(cmp_id, obsc):
 
     cur_usr = cl_sess_data_dict.get('unm')
 
+    data = {'unm': cl_sess_data_dict.get('unm'),
+            'id': cl_sess_data_dict.get('db_id'),
+            'fnm': cl_sess_data_dict.get('fname'),
+            'lnm': cl_sess_data_dict.get('lname'),
+            'eml': cl_sess_data_dict.get('eml')}
+
     # URL for agent websocket connection initialization
     ws_url = f"wss://{mntr_url}/ws?id={cur_usr_id}&unm={cl_sess_data_dict.get('unm')}"
 
@@ -550,7 +577,7 @@ async def probes(cmp_id, obsc):
         all_probes = {'':''}
 
     return await render_template("app/probes.html", obsc_key=session.get('url_key'),
-                                all_probes=all_probes, cmp_id=cmp_id, mntr_url=mntr_url, cur_usr=cur_usr, auth_id=cur_usr_id, ws_url=ws_url)
+                                all_probes=all_probes, cmp_id=cmp_id, mntr_url=mntr_url, cur_usr=cur_usr, auth_id=cur_usr_id, ws_url=ws_url, data=data)
 
 @app.route('/flowmgr', defaults={'cmp_id': 'bcl','obsc': url_key}, methods=['GET', 'POST'])
 @app.route("/flowmgr/<string:cmp_id>/<string:obsc>", methods=['GET', 'POST'])
@@ -571,6 +598,12 @@ async def flowmgr(cmp_id, obsc):
 
     cur_usr = cl_sess_data_dict.get('unm')
 
+    data = {'unm': cl_sess_data_dict.get('unm'),
+            'id': cl_sess_data_dict.get('db_id'),
+            'fnm': cl_sess_data_dict.get('fname'),
+            'lnm': cl_sess_data_dict.get('lname'),
+            'eml': cl_sess_data_dict.get('eml')}
+
     # URL for agent websocket connection initialization
     ws_url = f"wss://{mntr_url}/ws?id={cur_usr_id}&unm={cl_sess_data_dict.get('unm')}"
 
@@ -581,7 +614,7 @@ async def flowmgr(cmp_id, obsc):
         all_flows = {'':''}
 
     return await render_template("app/flowmgr.html", obsc_key=session.get('url_key') ,
-                                flows=all_flows, cmp_id=cmp_id, ollama_proxy =os.environ.get('OLLAMA_PROXY_URL'), user=cl_sess_data_dict.get('unm'), mntr_url=mntr_url, cur_usr=cur_usr, auth_id=cur_usr_id, ws_url=ws_url)
+                                flows=all_flows, cmp_id=cmp_id, ollama_proxy =os.environ.get('OLLAMA_PROXY_URL'), user=cl_sess_data_dict.get('unm'), mntr_url=mntr_url, cur_usr=cur_usr, auth_id=cur_usr_id, ws_url=ws_url, data=data)
 
 @app.route('/netvis', defaults={'cmp_id': 'bcl','obsc': url_key}, methods=['GET', 'POST'])
 @app.route("/netvis/<string:cmp_id>/<string:obsc>", methods=['GET', 'POST'])
@@ -601,13 +634,19 @@ async def netvis(cmp_id, obsc):
 
     cur_usr = cl_sess_data_dict.get('unm')
 
+    data = {'unm': cl_sess_data_dict.get('unm'),
+            'id': cl_sess_data_dict.get('db_id'),
+            'fnm': cl_sess_data_dict.get('fname'),
+            'lnm': cl_sess_data_dict.get('lname'),
+            'eml': cl_sess_data_dict.get('eml')}
+
     # URL for agent websocket connection initialization
     ws_url = f"wss://{mntr_url}/ws?id={cur_usr_id}&unm={cl_sess_data_dict.get('unm')}"
     
     discovery_results = None
 
     return await render_template("app/netvis.html", obsc_key=session.get('url_key') ,
-                                  cmp_id=cmp_id, discovery_results = discovery_results, auth_id=cur_usr_id, ws_url=ws_url, cur_usr=cur_usr)
+                                  cmp_id=cmp_id, discovery_results = discovery_results, auth_id=cur_usr_id, ws_url=ws_url, cur_usr=cur_usr, data=data)
 
 @app.errorhandler(Unauthorized)
 async def redirect_to_login(*_):
