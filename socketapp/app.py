@@ -1086,6 +1086,8 @@ async def createapi():
                             f"{api_name}_rand": secrets.token_urlsafe(500),
                             f"{api_name}_jwt_secret": secrets.token_urlsafe(500)
                         }
+        
+        logger.info(usr_data_dict['db_id'])
 
         if await cl_data_db.upload_db_data(id=f"api_dta:{usr_data_dict['db_id']}", data=updated_api_data) > 0:
             link = cli.create_link(secret=new_api_key, ttl=int(os.environ.get('OTS_TTL')))
