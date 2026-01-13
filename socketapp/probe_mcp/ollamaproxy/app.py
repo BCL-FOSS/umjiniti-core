@@ -264,7 +264,7 @@ async def tools():
             timeout=int(os.environ.get('REQUEST_TIMEOUT')),
         )
       
-        ollama_json = await resp.json()
+        ollama_json = resp.json()
         ollama_out = ollama_json.get("message", {}).get("content", "")
         logger.info(f"Ollama output (raw): {ollama_out}")
         #await resp.aclose()
@@ -324,7 +324,7 @@ async def tools():
                 timeout=int(os.environ.get('REQUEST_TIMEOUT')),
             )
             #resp.raise_for_status()
-            retry_json = await resp.json()
+            retry_json = resp.json()
             retry_out = retry_json.get("message", {}).get("content", "")
             logger.info(f"--- RETRY OUTPUT ---\n{retry_out}\n-------------------")
             #await resp.aclose()
@@ -423,7 +423,7 @@ async def summary():
             timeout=int(os.environ.get('REQUEST_TIMEOUT')),
         )
       
-        ollama_json = await resp.json()
+        ollama_json = resp.json()
         ollama_out = ollama_json.get("message", {}).get("content", "")
         logger.info(f"Ollama output (raw): {ollama_out}")
 
