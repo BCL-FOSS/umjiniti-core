@@ -122,7 +122,7 @@ async def flow_call_mcp(server_url: str, tool_call: dict, mcp_headers: dict):
             #await tool_call_resp.aclose()
             return answer_data
 
-async def call_mcp(server_url: str, tool_call: dict, mcp_headers: dict):
+async def call_mcp(server_url: str, tool_call: dict):
     """
     Call the FastMCP server tool with sanitized arguments.
     """
@@ -168,7 +168,7 @@ async def call_mcp(server_url: str, tool_call: dict, mcp_headers: dict):
             #await tool_call_resp.aclose()
             return answer_data
 
-async def fetch_mcp_tools(server_url: str, mcp_headers: dict) -> list:
+async def fetch_mcp_tools(server_url: str) -> list:
     """
     Fetch available tool schemas (inputs + returns) from MCP server manifest.
     """
@@ -220,7 +220,7 @@ async def tools():
     tool_schemas = []
     for t in tools:
         if t.get("type") == "mcp":
-            mcp_tools = await fetch_mcp_tools(server_url=t["server_url"], mcp_headers=headers)
+            mcp_tools = await fetch_mcp_tools(server_url=t["server_url"])
             if mcp_tools is None:
                 return {'Error': f"Failed to fetch tools from {t['server_url']}"}
             for tool in mcp_tools:
@@ -364,7 +364,7 @@ async def tools():
                 break
 
         if server_url:
-            result = await call_mcp(server_url=server_url, tool_call=parsed, mcp_headers=headers)
+            result = await call_mcp(server_url=server_url, tool_call=parsed)
             tool_outputs.append({"tool": tool_name, "output": result})
             final_output = json.dumps(result)
         else:
