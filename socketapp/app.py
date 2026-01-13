@@ -204,10 +204,10 @@ async def _receive() -> None:
 
                         # Extract agent response
                         logger.info(tool_resp)
-                        logger.info(await tool_resp.json())
+                        logger.info(tool_resp.json())
                         #logger.info(resp.output[0].content[0].text)
 
-                        tool_msg = await tool_resp.json()  
+                        tool_msg = tool_resp.json()  
 
                         logger.info(tool_msg['output_text'])
 
@@ -223,26 +223,27 @@ async def _receive() -> None:
 
                             await broker.publish(message=json.dumps(err_msg_data))
                         else:
-                            output_message = ""
-                            lst = ast.literal_eval(tool_msg['output_text'])
+                            if 'traceroute' in message['msg'].lower():
+                                output_message = ""
+                                lst = ast.literal_eval(tool_msg['output_text'])
 
-                            # Extract the traceroute output (element at index 1)
-                            traceroute_output = lst[1]
+                                # Extract the traceroute output (element at index 1)
+                                traceroute_output = lst[1]
 
-                            # Convert escaped newlines to real newlines
-                            decoded_output = traceroute_output.encode('utf-8').decode('unicode_escape')
+                                # Convert escaped newlines to real newlines
+                                decoded_output = traceroute_output.encode('utf-8').decode('unicode_escape')
 
-                            # Split into lines (each line as a string, with '\n' at the end if you want)
-                            lines = decoded_output.split('\n')
+                                # Split into lines (each line as a string, with '\n' at the end if you want)
+                                lines = decoded_output.split('\n')
 
-                            # Print each line (as string variables)
-                            for i, line in enumerate(lines):
-                                #var_name = f"line_{i+1}"
-                                hop = f'{line}\n'
-                                #logger.info(hop)
-                                output_message+=hop
-                                
-                            logger.info(output_message)
+                                # Print each line (as string variables)
+                                for i, line in enumerate(lines):
+                                    #var_name = f"line_{i+1}"
+                                    hop = f'{line}\n'
+                                    #logger.info(hop)
+                                    output_message+=hop
+                                    
+                                logger.info(output_message)
 
                             """
                             smmry_payload = {
@@ -276,8 +277,7 @@ async def _receive() -> None:
                             }
                     
                             await broker.publish(message=json.dumps(agnt_msg_data))
-                            #await tool_resp.aclose()
-                            #await smmry_resp.aclose()
+                         
             case 'ping':
                 logger.debug(f"Received ping message: {message}")
 
