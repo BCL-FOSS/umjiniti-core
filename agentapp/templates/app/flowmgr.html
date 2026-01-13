@@ -107,7 +107,7 @@
 
         try {
           //const resp = await fetch(endpoint, {method: 'POST', headers: {'Content-Type': 'application/json', 'X-ACCESS-TOKEN': jwtToken}, body: JSON.stringify(payload)});
-          const resp = await fetch(endpoint, {method: 'POST', credentials: "same-origin", body: JSON.stringify(payload)});
+          const resp = await fetch(endpoint, {method: 'POST', credentials: "same-origin", headers: {"Content-Type": "application/json"}, body: JSON.stringify(payload)});
 
           if (resp.ok) {
             const j = await resp.json()
