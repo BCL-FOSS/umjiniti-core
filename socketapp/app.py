@@ -243,8 +243,9 @@ async def _receive() -> None:
                                     #logger.info(hop)
                                     output_message+=hop
                                 
-                                #logger.info(output_message)
+                                logger.info(output_message)
 
+                            """
                             smmry_payload = {
                                 'model':"qwen3:1.7b",
                                 'usr_input':f"{output_message}",
@@ -265,10 +266,12 @@ async def _receive() -> None:
                             final_output+=f'{output_message}\n\n'
                             final_output+=summary_msg['output_text']
                             logger.info(final_output)
+                            
+                            """
 
                             agnt_msg_data = {
                                 "from": "agent",
-                                "msg": final_output,
+                                "msg": output_message,
                                 "url": message["url"],
                                 "usr_id": message['usr_id']
                             }
