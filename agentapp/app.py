@@ -49,7 +49,7 @@ async def ip_blocker(auto_ban: bool = False):
         if await ip_ban_db.upload_db_data(id=f"blocked_ip:{request.access_route[-1]}", data=ban_data) > 0:
             logger.warning(f"Max authentication attempts reached for {request.access_route[-1]}. Blocking further attempts.")
             auth_attempts.pop(request.access_route[-1], None)
-            #abort(403) 
+            abort(403) 
 
     if request.access_route[-1] not in auth_attempts:
         auth_attempts[request.access_route[-1]] = 1
@@ -66,7 +66,7 @@ async def ip_blocker(auto_ban: bool = False):
         if await ip_ban_db.upload_db_data(id=f"blocked_ip:{request.access_route[-1]}", data=ban_data) > 0:
             logger.warning(f"Max authentication attempts reached for {request.access_route[-1]}. Blocking further attempts.")
             auth_attempts.pop(request.access_route[-1], None)
-            #abort(403) 
+            abort(403) 
 
 def admin_login_required(func):
     @wraps(func)
@@ -413,14 +413,16 @@ async def agent(cmp_id, obsc):
 
     probe_data = await cl_data_db.get_all_data(match=f"prb:*")
 
+    """
     mcp_urls = []
     if probe_data is not None:
         for k,v in probe_data.items():
             mcp_urls.append(f"{v['url']}/llm/mcp")
 
     logger.info(mcp_urls)
-
-    return await render_template("app/agent.html", obsc_key=session.get('url_key'), ws_url=ws_url, cmp_id=cmp_id, user=cl_sess_data_dict.get('unm'), options=mcp_urls, mntr_url=mntr_url, cur_usr=cur_usr, auth_id=cur_usr_id, data=data)
+    
+    """
+    return await render_template("app/agent.html", obsc_key=session.get('url_key'), ws_url=ws_url, cmp_id=cmp_id, user=cl_sess_data_dict.get('unm'), options=probe_data, mntr_url=mntr_url, cur_usr=cur_usr, auth_id=cur_usr_id, data=data)
 
 @app.route('/settings', defaults={'cmp_id': url_cmp_id,'obsc': url_key}, methods=['GET', 'POST'])
 @app.route("/settings/<string:cmp_id>/<string:obsc>", methods=['GET', 'POST'])

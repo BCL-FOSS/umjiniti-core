@@ -200,7 +200,7 @@ async def _receive() -> None:
 
                         headers = {'content-type': 'application/json'}
                         
-                        tool_resp = await client.post(f"{os.environ.get('OLLAMA_PROXY_URL')}/tools", json=payload, headers=headers, timeout=int(os.environ.get('REQUEST_TIMEOUT')))
+                        tool_resp = await client.post(f"{os.environ.get('OLLAMA_PROXY_URL')}/multitools", json=payload, headers=headers, timeout=int(os.environ.get('REQUEST_TIMEOUT')))
 
                         # Extract agent response
                         logger.info(tool_resp)
@@ -223,6 +223,7 @@ async def _receive() -> None:
 
                             await broker.publish(message=json.dumps(err_msg_data))
                         else:
+                            """
                             if 'traceroute' in message['msg'].lower():
                                 output_message = ""
                                 lst = ast.literal_eval(tool_msg['output_text'])
@@ -245,7 +246,7 @@ async def _receive() -> None:
                                     
                                 logger.info(output_message)
 
-                            """
+                            
                             smmry_payload = {
                                 'model':"qwen3:1.7b",
                                 'usr_input':f"{output_message}",
@@ -268,6 +269,27 @@ async def _receive() -> None:
                             logger.info(final_output)
                             
                             """
+
+                            output_message = ""
+                            lst = ast.literal_eval(tool_msg['output_text'])
+
+                            # Extract the net command output (element at index 1)
+                            net_cmd_output = lst[1]
+
+                            # Convert escaped newlines to real newlines
+                            decoded_output = net_cmd_output.encode('utf-8').decode('unicode_escape')
+
+                            # Split into lines (each line as a string, with '\n' at the end if you want)
+                            lines = decoded_output.split('\n')
+
+                            # Print each line (as string variables)
+                            for i, line in enumerate(lines):
+                                #var_name = f"line_{i+1}"
+                                net_cmd_data = f'{line}\n'
+                                #logger.info(hop)
+                                output_message+=net_cmd_data
+                                    
+                            logger.info(output_message)
 
                             agnt_msg_data = {
                                 "from": "agent",
