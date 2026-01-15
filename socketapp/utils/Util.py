@@ -44,7 +44,7 @@ class Util:
     def key_gen(self, size=6, chars=string.ascii_uppercase + string.digits):
         return ''.join(random.SystemRandom().choice(chars) for _ in range(size))
     
-    def extract_output_text_line_by_line(tool_results):
+    def extract_output_text_line_by_line(self, tool_results):
         lines_out = []
 
         for item in tool_results:
