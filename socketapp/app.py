@@ -273,48 +273,49 @@ async def _receive() -> None:
                             output_message = ""
                             logger.info(f"Request result = {tool_msg['output_text']}")
 
-                            if isinstance(tool_msg['output_text'], dict):
-                                lst = ast.literal_eval(tool_msg['output_text'])
+                            match tool_msg['output_type']:
+                                case 'single_tool':
+                                    lst = ast.literal_eval(tool_msg['output_text'])
 
-                                net_cmd_output = lst[1]
+                                    net_cmd_output = lst[1]
 
-                                decoded_output = net_cmd_output.encode('utf-8').decode('unicode_escape')
+                                    decoded_output = net_cmd_output.encode('utf-8').decode('unicode_escape')
 
-                                lines = decoded_output.split('\n')
+                                    lines = decoded_output.split('\n')
 
-                                for i, line in enumerate(lines):
-                                    #var_name = f"line_{i+1}"
-                                    net_cmd_data = f'{line}\n'
-                                    #logger.info(hop)
-                                    output_message+=net_cmd_data
+                                    for i, line in enumerate(lines):
+                                        #var_name = f"line_{i+1}"
+                                        net_cmd_data = f'{line}\n'
+                                        #logger.info(hop)
+                                        output_message+=net_cmd_data
 
-                            if isinstance(tool_msg['output_text'], list):
-                                for item in tool_msg['output_text']:
-                                    logger.info(item)
-                                    output_field = item.get('output')
-                                    if output_field is None:
-                                        continue
+                                case 'multi_tool':
+                                    for item in tool_msg['output_text']:
+                                        logger.info(item)
+                                        output_field = item.get('output')
+                                        if output_field is None:
+                                            continue
 
-                                    text_parts = []
+                                        text_parts = []
 
-                                    if isinstance(output_field, list):
-                                        if len(output_field) > 1 and isinstance(output_field[1], str):
-                                            text_parts.append(output_field[1])
-                                        else:
-                                            for part in output_field:
-                                                if isinstance(part, str) and part:
-                                                    text_parts.append(part)
-                                    elif isinstance(output_field, str):
-                                        text_parts.append(output_field)
+                                        if isinstance(output_field, list):
+                                            if len(output_field) > 1 and isinstance(output_field[1], str):
+                                                text_parts.append(output_field[1])
+                                            else:
+                                                for part in output_field:
+                                                    if isinstance(part, str) and part:
+                                                        text_parts.append(part)
+                                        elif isinstance(output_field, str):
+                                            text_parts.append(output_field)
 
-                                    for part in text_parts:
-                                        try:
-                                            decoded = part.encode('utf-8').decode('unicode_escape')
-                                        except Exception:
-                                            decoded = part
-                                        lines = decoded.splitlines()
-                                        for line in lines:
-                                            output_message += f"{line}\n"
+                                        for part in text_parts:
+                                            try:
+                                                decoded = part.encode('utf-8').decode('unicode_escape')
+                                            except Exception:
+                                                decoded = part
+                                            lines = decoded.splitlines()
+                                            for line in lines:
+                                                output_message += f"{line}\n"
 
                             logger.info(output_message)
 

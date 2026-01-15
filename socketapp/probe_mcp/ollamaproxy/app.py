@@ -396,18 +396,20 @@ async def multitools():
                 logger.warning(f"No server found exposing tool `{tool_name}`; marking as out-of-scope")
                 tool_outputs.append({"tool": tool_name, "error": "Tool not available on known MCP servers"})
 
+        response_payload={}
+
         # Compose final output: if a single tool was called, return its JSON; if multiple, return an array of outputs
         if len(tool_outputs) == 1:
             final_output = json.dumps(tool_outputs[0].get("output"))
+            response_payload['output_type'] = 'single_tool'
         else:
             final_output = json.dumps(tool_outputs)
+            response_payload['output_type'] = 'multi_tool'
 
-    response_payload={
-        "id": f"resp:{user}:{(tool_calls[0].get('name') if tool_calls else 'none')}:{datetime.now(timezone.utc)}:{uuid.uuid4()}",
-        "user_msg": user_input,
-        "output_text": final_output,
-        "tool_outputs": tool_outputs
-    }
+    response_payload['id'] = f"resp:{user}:{(tool_calls[0].get('name') if tool_calls else 'none')}:{datetime.now(timezone.utc)}:{uuid.uuid4()}"
+    response_payload['user_msg'] = user_input
+    response_payload['output_text'] = final_output
+    response_payload['tool_outputs'] = tool_outputs
 
     logger.info(response_payload)
 
