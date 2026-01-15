@@ -271,24 +271,33 @@ async def _receive() -> None:
                             """
 
                             output_message = ""
-                            lst = ast.literal_eval(tool_msg['output_text'])
+                            logger.info(f"Request result = {tool_msg['output_text']}")
 
-                            # Extract the net command output (element at index 1)
-                            net_cmd_output = lst[1]
+                            if isinstance(tool_msg['output_text'], dict):
+                                lst = ast.literal_eval(tool_msg['output_text'])
 
-                            # Convert escaped newlines to real newlines
-                            decoded_output = net_cmd_output.encode('utf-8').decode('unicode_escape')
+                                # Extract the net command output (element at index 1)
+                                net_cmd_output = lst[1]
 
-                            # Split into lines (each line as a string, with '\n' at the end if you want)
-                            lines = decoded_output.split('\n')
+                                # Convert escaped newlines to real newlines
+                                decoded_output = net_cmd_output.encode('utf-8').decode('unicode_escape')
 
-                            # Print each line (as string variables)
-                            for i, line in enumerate(lines):
-                                #var_name = f"line_{i+1}"
-                                net_cmd_data = f'{line}\n'
-                                #logger.info(hop)
-                                output_message+=net_cmd_data
-                                    
+                                # Split into lines (each line as a string, with '\n' at the end if you want)
+                                lines = decoded_output.split('\n')
+
+                                # Print each line (as string variables)
+                                for i, line in enumerate(lines):
+                                    #var_name = f"line_{i+1}"
+                                    net_cmd_data = f'{line}\n'
+                                    #logger.info(hop)
+                                    output_message+=net_cmd_data
+
+                            if isinstance(tool_msg['output_text'], list):
+                                for item in tool_msg['output_text']:
+                                    logger.info(item)
+                                    logger.info(item.get('output'))
+                                    output_message += f"{item}\n"
+
                             logger.info(output_message)
 
                             agnt_msg_data = {
