@@ -34,6 +34,10 @@ BREVO_SENDER_EMAIL= # The email you added as a sender in the previous step.
 # Set server URL here (must be FQDN)
 SERVER_NAME=umj.baughlabs.tech
 
+# Set the preferred ollama model name
+# If changed, update the name in ollama_model_pull.sh and run to pull
+OLLAMA_MODEL=qwen3:1.7b
+
 # No need to edit anything below this comment
 IP_BAN_DB=ipbanredis
 IP_BAN_DB_PORT=5379
@@ -50,7 +54,16 @@ API_TOKEN_NAME=wkflw_token
 MAX_AUTH_ATTEMPTS=3
 ```
 
-5. Run the startup script. This installs and configures all necessary dependencies required by umjiniti.
+5. Change the url in the Caddyfile to match SERVER_NAME
+```bash
+# Caddyfile
+
+umj.baughlabs.tech { # Change this only. Leave eeverything else the same
+  ...
+  
+```
+
+6. Run the startup script. This installs and configures all necessary dependencies required by umjiniti.
 ```bash
  sudo ./init.sh
 ```

@@ -27,6 +27,7 @@ services:
       - MAX_AUTH_ATTEMPTS=${MAX_AUTH_ATTEMPTS}
       - BREVO_API_KEY=${BREVO_API_KEY}
       - BREVO_SENDER_EMAIL=${BREVO_SENDER_EMAIL}
+      - OLLAMA_MODEL=${OLLAMA_MODEL}
     volumes:
       - socket_data:/home/quart/instance/apps
     
@@ -49,13 +50,7 @@ services:
       - OLLAMA_PROXY_URL=http://ollama-proxy:8000/v1
       - REQUEST_TIMEOUT=${REQUEST_TIMEOUT}
       - API_TOKEN_NAME=${API_TOKEN_NAME}
-      - OTS_USER=${OTS_USER}
-      - OTS_KEY=${OTS_KEY}
-      - OTS_TTL=${OTS_TTL}
-      - REGION=${OTS_REGION}
       - MAX_AUTH_ATTEMPTS=${MAX_AUTH_ATTEMPTS}
-      - BREVO_API_KEY=${BREVO_API_KEY}
-      - BREVO_SENDER_EMAIL=${BREVO_SENDER_EMAIL}
     volumes:
       - agent_data:/home/quart/instance/apps
 

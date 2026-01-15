@@ -183,7 +183,7 @@ async def _receive() -> None:
 
                     async with httpx.AsyncClient() as client:
                         payload = {
-                            'model':"qwen3:1.7b",
+                            'model': os.environ.get('OLLAMA_MODEL'),
                             'tools':[
                                     {
                                         "type": "mcp",
@@ -223,32 +223,24 @@ async def _receive() -> None:
 
                             await broker.publish(message=json.dumps(err_msg_data))
                         else:
-                            """
-                            if 'traceroute' in message['msg'].lower():
-                                output_message = ""
-                                lst = ast.literal_eval(tool_msg['output_text'])
+                            output_message = ""
+                            logger.info(f"Request result = {tool_msg['output_text']}\n")
+                            logger.info(type(tool_msg['output_text']))
 
-                                # Extract the traceroute output (element at index 1)
-                                traceroute_output = lst[1]
+                            data = json.loads(tool_msg['output_text'])
 
-                                # Convert escaped newlines to real newlines
-                                decoded_output = traceroute_output.encode('utf-8').decode('unicode_escape')
-
-                                # Split into lines (each line as a string, with '\n' at the end if you want)
+                            for item in data:
+                                net_cmd_output = item['output'][1]
+                                logger.info(f"Net command output: {net_cmd_output}")
+                                decoded_output = net_cmd_output.encode('utf-8').decode('unicode_escape')
                                 lines = decoded_output.split('\n')
 
-                                # Print each line (as string variables)
                                 for i, line in enumerate(lines):
-                                    #var_name = f"line_{i+1}"
-                                    hop = f'{line}\n'
-                                    #logger.info(hop)
-                                    output_message+=hop
-                                    
-                                logger.info(output_message)
+                                    net_cmd_data = f'{line}\n'
+                                    output_message+=net_cmd_data
 
-                            
                             smmry_payload = {
-                                'model':"qwen3:1.7b",
+                                'model': os.environ.get('OLLAMA_MODEL'),
                                 'usr_input':f"{output_message}",
                                 'instructions': SUMMARY_INSTRUCTIONS,
                                 'url': message['url'],
@@ -259,83 +251,33 @@ async def _receive() -> None:
                             smmry_resp = await client.post(f"{os.environ.get('OLLAMA_PROXY_URL')}/summary", json=smmry_payload, headers=headers, timeout=int(os.environ.get('REQUEST_TIMEOUT')))
 
                             logger.info(smmry_resp)
-                            logger.info(await smmry_resp.json())
+                            logger.info(smmry_resp.json())
 
-                            summary_msg = await smmry_resp.json()
+                            summary_msg = smmry_resp.json()
 
                             final_output = ""
                             final_output+=f'{output_message}\n\n'
                             final_output+=summary_msg['output_text']
                             logger.info(final_output)
+
+                            time_stamp = datetime.now(timezone.utc).isoformat()
+
+                            chat_data_id = f"chat:{tool_msg['id']}{time_stamp}"
+
+                            chat_data = {'id': chat_data_id,
+                                         'usr_msg': message["msg"],
+                                         'agent_msg': final_output,
+                                         'timestamp': time_stamp
+                                        }
+
+                            chat_data_upload = await cl_data_db.upload_db_data(id=chat_data_id, data=chat_data)
+
+                            if chat_data_upload > 0:
+                                logger.info(f"Chat data uploaded successfully with id: {chat_data_id}")
                             
-                            """
-
-                            output_message = ""
-                            logger.info(f"Request result = {tool_msg['output_text']}\n")
-                            logger.info(type(tool_msg['output_text']))
-
-                            data = json.loads(tool_msg['output_text'])
-                            #outputs = [item['output'] for item in data]
-                            #logger.info(f"Extracted outputs: {outputs}")
-                            #texts = [out[1] for out in outputs]
-                            #logger.info(texts)
-
-                            for item in data:
-                                net_cmd_output = item['output'][1]
-                                logger.info(f"Net command output: {net_cmd_output}")
-                                decoded_output = net_cmd_output.encode('utf-8').decode('unicode_escape')
-                                lines = decoded_output.split('\n')
-
-                                for i, line in enumerate(lines):
-                                    #var_name = f"line_{i+1}"
-                                    net_cmd_data = f'{line}\n'
-                                    #logger.info(hop)
-                                    output_message+=net_cmd_data
-
-                            """
-                            match tool_msg['output_type']:
-                                case 'multi_tool':
-                                    for tool_result in tool_msg['output_text']:
-                                        logger.info(tool_result)
-                                        logger.info(tool_result['output'])
-
-                                        lst = ast.literal_eval(tool_result['output'])
-
-                                        net_cmd_output = lst[1]
-
-                                        decoded_output = net_cmd_output.encode('utf-8').decode('unicode_escape')
-
-                                        lines = decoded_output.split('\n')
-
-                                        for i, line in enumerate(lines):
-                                            #var_name = f"line_{i+1}"
-                                            net_cmd_data = f'{line}\n'
-                                            #logger.info(hop)
-                                            output_message+=net_cmd_data
-
-                                case 'single_tool':
-                                    lst = ast.literal_eval(tool_msg['output_text'])
-
-                                    net_cmd_output = lst[1]
-
-                                    decoded_output = net_cmd_output.encode('utf-8').decode('unicode_escape')
-
-                                    lines = decoded_output.split('\n')
-
-                                    for i, line in enumerate(lines):
-                                        #var_name = f"line_{i+1}"
-                                        net_cmd_data = f'{line}\n'
-                                        #logger.info(hop)
-                                        output_message+=net_cmd_data
-
-                            logger.info(output_message)
-                            
-                            """
-                            #output_message = tool_msg['output_text']
-
                             agnt_msg_data = {
                                 "from": "agent",
-                                "msg": output_message,
+                                "msg": final_output,
                                 "url": message["url"],
                                 "usr_id": message['usr_id']
                             }
