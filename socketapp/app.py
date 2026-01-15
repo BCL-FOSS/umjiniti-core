@@ -276,16 +276,12 @@ async def _receive() -> None:
                             if isinstance(tool_msg['output_text'], dict):
                                 lst = ast.literal_eval(tool_msg['output_text'])
 
-                                # Extract the net command output (element at index 1)
                                 net_cmd_output = lst[1]
 
-                                # Convert escaped newlines to real newlines
                                 decoded_output = net_cmd_output.encode('utf-8').decode('unicode_escape')
 
-                                # Split into lines (each line as a string, with '\n' at the end if you want)
                                 lines = decoded_output.split('\n')
 
-                                # Print each line (as string variables)
                                 for i, line in enumerate(lines):
                                     #var_name = f"line_{i+1}"
                                     net_cmd_data = f'{line}\n'
@@ -295,14 +291,12 @@ async def _receive() -> None:
                             if isinstance(tool_msg['output_text'], list):
                                 for item in tool_msg['output_text']:
                                     logger.info(item)
-                                    # Extract the 'output' key from each item and handle different shapes
                                     output_field = item.get('output')
                                     if output_field is None:
                                         continue
 
                                     text_parts = []
 
-                                    # If 'output' is a list, prefer index 1 if it's a string, otherwise gather any string elements
                                     if isinstance(output_field, list):
                                         if len(output_field) > 1 and isinstance(output_field[1], str):
                                             text_parts.append(output_field[1])
@@ -310,11 +304,9 @@ async def _receive() -> None:
                                             for part in output_field:
                                                 if isinstance(part, str) and part:
                                                     text_parts.append(part)
-                                    # If 'output' is a single string, use it directly
                                     elif isinstance(output_field, str):
                                         text_parts.append(output_field)
 
-                                    # Normalize escaped newlines and append each line to output_message
                                     for part in text_parts:
                                         try:
                                             decoded = part.encode('utf-8').decode('unicode_escape')
