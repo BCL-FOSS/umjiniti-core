@@ -398,13 +398,16 @@ async def multitools():
 
         response_payload={}
 
-        # Compose final output: if a single tool was called, return its JSON; if multiple, return an array of outputs
+        """
         if len(tool_outputs) == 1:
             final_output = json.dumps(tool_outputs[0].get("output"))
             response_payload['output_type'] = 'single_tool'
         else:
             final_output = json.dumps(tool_outputs)
             response_payload['output_type'] = 'multi_tool'
+        """
+    
+        final_output = json.dumps(tool_outputs)
 
     response_payload['id'] = f"resp:{user}:{(tool_calls[0].get('name') if tool_calls else 'none')}:{datetime.now(timezone.utc)}:{uuid.uuid4()}"
     response_payload['user_msg'] = user_input

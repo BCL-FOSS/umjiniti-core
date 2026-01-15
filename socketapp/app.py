@@ -275,10 +275,22 @@ async def _receive() -> None:
                             logger.info(type(tool_msg['output_text']))
 
                             data = json.loads(tool_msg['output_text'])
-                            outputs = [item['output'] for item in data]
-                            logger.info(f"Extracted outputs: {outputs}")
-                            texts = [out[1] for out in outputs]
-                            logger.info(texts)
+                            #outputs = [item['output'] for item in data]
+                            #logger.info(f"Extracted outputs: {outputs}")
+                            #texts = [out[1] for out in outputs]
+                            #logger.info(texts)
+
+                            for item in data:
+                                net_cmd_output = item['output'][1]
+                                logger.info(f"Net command output: {net_cmd_output}")
+                                decoded_output = net_cmd_output.encode('utf-8').decode('unicode_escape')
+                                lines = decoded_output.split('\n')
+
+                                for i, line in enumerate(lines):
+                                    #var_name = f"line_{i+1}"
+                                    net_cmd_data = f'{line}\n'
+                                    #logger.info(hop)
+                                    output_message+=net_cmd_data
 
                             """
                             match tool_msg['output_type']:
@@ -319,7 +331,7 @@ async def _receive() -> None:
                             logger.info(output_message)
                             
                             """
-                            output_message = tool_msg['output_text']
+                            #output_message = tool_msg['output_text']
 
                             agnt_msg_data = {
                                 "from": "agent",
