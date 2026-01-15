@@ -273,6 +273,9 @@ async def _receive() -> None:
                             output_message = ""
                             logger.info(f"Request result = {tool_msg['output_text']}")
 
+                            parsed_results = await run_sync(lambda: util_obj.extract_output_text_line_by_line(tool_msg['output_text']))
+
+                            """
                             match tool_msg['output_type']:
                                 case 'single_tool':
                                     lst = ast.literal_eval(tool_msg['output_text'])
@@ -316,6 +319,10 @@ async def _receive() -> None:
                                             lines = decoded.splitlines()
                                             for line in lines:
                                                 output_message += f"{line}\n"
+                            
+                            """
+
+                            output_message = parsed_results
 
                             logger.info(output_message)
 
