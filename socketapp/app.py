@@ -377,7 +377,7 @@ async def _receive() -> None:
                     logger.debug(f"Created ping expiry for new session {message['sess_id']} -> {pong_msg_data['exp']}")
                 
                 """
-            case 'prb_chk':
+            case 'heart_beat':
                 now = datetime.now(tz=timezone.utc)
 
                 if message["sess_id"] in connected_probes:
@@ -553,7 +553,7 @@ async def ws():
                 if not user:
                     await ip_blocker(auto_ban=True)
                     await websocket.accept()    
-                    await websocket.close(1010, 'Missing required args...')
+                    await websocket.close(1010, 'Error occurred')
                     
                 await cl_auth_db.connect_db()
                 await cl_sess_db.connect_db()
@@ -577,7 +577,7 @@ async def ws():
                     if decoded_token.get('rand') != sub_dict.get('usr_rand'):
                         await ip_blocker(auto_ban=True)
                         await websocket.accept()
-                        await websocket.close(1010, 'websocket authentication failed')
+                        await websocket.close(1010, 'Error occurred')
 
                 if await cl_auth_db.get_all_data(match=f'*uid:{user}*', cnfrm=True) and probe_conn.strip().lower() == 'y':
                     user_data = await cl_auth_db.get_all_data(match=f'uid:{user}')
@@ -587,7 +587,7 @@ async def ws():
                     api_data = await cl_data_db.get_all_data(match=f"api_dta:{user_data_dict.get('db_id')}")
 
                     if api_data is None:
-                        return jsonify(error="Resource not found"), 404
+                        return jsonify(error="Error occurred"), 404
                         
                     api_data_dict = next(iter(api_data.values()))
                     logger.info(api_data_dict)
@@ -599,7 +599,7 @@ async def ws():
                     if decoded_token.get('rand') != api_rand:
                         await ip_blocker(auto_ban=True)
                         await websocket.accept()
-                        await websocket.close(1010, 'websocket authentication failed')
+                        await websocket.close(1010, 'Error occurred')
                         
                 logger.info('websocket authentication successful')
 
@@ -757,43 +757,52 @@ async def enroll():
     await cl_auth_db.connect_db()
     await cl_data_db.connect_db()
 
-    if await cl_auth_db.get_all_data(match=f'*uid:{usr}*', cnfrm=True) is False:
-        await ip_blocker()
-        return Unauthorized()
-    
-    usr_data = await cl_auth_db.get_all_data(match=f'*uid:{usr}*')
-    logger.info(usr_data)
-    usr_data_dict = next(iter(usr_data.values()))
-    logger.info(usr_data_dict)
+    try:
 
-    api_data = await cl_data_db.get_all_data(match=f"api_dta:{usr_data_dict.get('db_id')}")
-
-    if api_data is None:
-        return jsonify(error="Resource not found"), 404
+        if await cl_auth_db.get_all_data(match=f'*uid:{usr}*', cnfrm=True) is False:
+            await ip_blocker()
+            return Unauthorized()
         
-    api_data_dict = next(iter(api_data.values()))
-    logger.info(api_data_dict)
+        usr_data = await cl_auth_db.get_all_data(match=f'*uid:{usr}*')
+        logger.info(usr_data)
+        usr_data_dict = next(iter(usr_data.values()))
+        logger.info(usr_data_dict)
 
-    jwt_key = api_data_dict.get(f'{api_name}_jwt_secret')
-    logger.info(jwt_key)
-    decoded_token = jwt.decode(jwt=jwt_token, key=jwt_key , algorithms=["HS256"])
-    logger.info(decoded_token)
+        api_data = await cl_data_db.get_all_data(match=f"api_dta:{usr_data_dict.get('db_id')}")
 
-    if decoded_token.get('rand') != api_data_dict.get(f'{api_name}_rand') or bcrypt.verify(api_key,api_data_dict.get(api_name)) is False:
-        await ip_blocker()
-        return Unauthorized()
+        if api_data is None:
+            return jsonify(error="Resource not found"), 404
             
-    # Adopt new probe
-    adopted_probe_data = await request.get_json()
-    logger.info(adopted_probe_data)
-    prb_db_id = f"prb:{usr}:{adopted_probe_data['prb_id']}"
-    adopted_probe_data['db_id'] = prb_db_id
-    logger.info(adopted_probe_data)
+        api_data_dict = next(iter(api_data.values()))
+        logger.info(api_data_dict)
 
-    if await cl_data_db.upload_db_data(id=prb_db_id, data=adopted_probe_data) > 0:
-        return jsonify({'status':'probe adopted'})
-    else:
-        return jsonify({'status':'probe adoption failed'}), 400
+        jwt_key = api_data_dict.get(f'{api_name}_jwt_secret')
+        logger.info(jwt_key)
+        decoded_token = jwt.decode(jwt=jwt_token, key=jwt_key , algorithms=["HS256"])
+        logger.info(decoded_token)
+
+        if decoded_token.get('rand') != api_data_dict.get(f'{api_name}_rand') or bcrypt.verify(api_key,api_data_dict.get(api_name)) is False:
+            await ip_blocker()
+            return Unauthorized()
+                
+        # Adopt new probe
+        adopted_probe_data = await request.get_json()
+        logger.info(adopted_probe_data)
+        prb_db_id = f"prb:{usr}:{adopted_probe_data['prb_id']}"
+        adopted_probe_data['db_id'] = prb_db_id
+        logger.info(adopted_probe_data)
+
+        if await cl_data_db.upload_db_data(id=prb_db_id, data=adopted_probe_data) > 0:
+            return jsonify({'status':'probe adopted'})
+        else:
+            return jsonify({'status':'probe adoption failed'}), 400
+        
+    except ExpiredSignatureError:
+        logger.warning("JWT expired, need to refresh token")
+        return ExpiredSignatureError()
+    except InvalidTokenError as e:
+        logger.error(f"JWT invalid: {e}")
+        return InvalidTokenError()
     
 @app.route('/delete', methods=['POST'])
 async def delete():
