@@ -56,8 +56,8 @@ async def ip_blocker(auto_ban: bool = False):
 
     if auth_attempts[request.access_route[-1]] != max_auth_attempts:
         auth_attempts[request.access_route[-1]] += 1
-        await flash(message=f'Try again...', category='danger')
-        return redirect(url_for('login'))
+        #await flash(message=f'Try again...', category='danger')
+        #return redirect(url_for('login'))
     else:
         await ip_ban_db.connect_db()
         now = datetime.now(tz=timezone.utc)
@@ -256,7 +256,8 @@ async def register():
 
             if await cl_auth_db.get_all_data(match=f"reg_key:{username}:*", cnfrm=True) is False:
                 await ip_blocker()
-                return Unauthorized()
+                await flash(message=f'Registration failed. Try again.', category='danger')
+                return redirect(url_for('register'))
                 
             reg_key_data = await cl_auth_db.get_all_data(match=f"reg_key:{username}:*")
 
@@ -266,7 +267,8 @@ async def register():
 
             if bcrypt.verify(secret=reg_key, hash=reg_key_sub_dict.get("reg_key")) is False:
                 await ip_blocker()
-                return Unauthorized()
+                await flash(message=f'Registration failed. Try again.', category='danger')
+                return redirect(url_for('register'))
 
             password = form.password.data
             email = form.email.data

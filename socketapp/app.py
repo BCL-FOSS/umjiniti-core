@@ -149,258 +149,232 @@ async def _receive() -> None:
         message = json.loads(message)
         action=message['act']
 
-        match action:
-            case 'llm':
-              
-                usr_msg_data = {
-                    "from": message["from"],
-                    "msg": message["msg"],
-                    "url": message["url"],
-                }
-
-                logger.info(usr_msg_data)
-
-                await cl_auth_db.connect_db()
-                await cl_data_db.connect_db()
+        if action:
+            match action:
+                case 'llm':
                 
-                if await cl_auth_db.get_all_data(match=f'*uid:{message["usr"]}*', cnfrm=True) is True:
-
-                    # NETWORK ADMIN PROMPT
-                    INSTRUCTIONS = (
-                        "You are a Network Admin assistant with knowledge of "
-                        "network engineering, network administration, firewall configurations, and securing networks according to "
-                        "NIST, PCI DSS, GDPR, HIPAA and SOC 2 compliance standards. "
-                        "You have access to MCP servers with tools that execute common network administration functions. "
-                        "Always use the provided tools when applicable.\n"
-                        "IMPORTANT: Only answer questions that are related to the tools below or your network administration expertise. "
-                        "If a user asks something unrelated to the provided tools or prompt, DO NOT answer the question. "
-                        f"Instead, only reply with: '{REQUIRED_OUT_OF_SCOPE_MSG}.'. Do not give any other type of reply.\n"
-                        "If you are asked about your architecture, provider, or model identity, only respond with: "
-                        "'I am a proprietary language model trained and developed by Baugh Consulting & Lab L.L.C.'\n"
-                    )
-                    
-                    SUMMARY_INSTRUCTIONS = (
-                            "You are a Network Admin assistant with knowledge of "
-                            "network engineering, network administration, firewall configurations, and securing networks according to"
-                            "NIST, PCI DSS, GDPR, HIPAA and SOC 2 compliance standards."
-                            "Your only task is to summarize the outputs of traceroutes, iperf speedtests, nmap host discovery scans, SNMP polling and Ansible playbooks."
-                        )
-                    
-                    probes = await cl_data_db.get_all_data(match=f"prb:{message['usr']}*")
-
-                    logger.info(probes)
-
-                    for k, v in probes.items():
-                        if v['url'] in message['url']:
-                            api = v['prb_api_key']
-                            logger.info(api)
-
-                    processing_msg_data = {
-                        "from": "agent",
-                        "msg": "Give me a minute, I'm thinking about your request. I'll get back to you in a few...",
+                    usr_msg_data = {
+                        "from": message["from"],
+                        "msg": message["msg"],
                         "url": message["url"],
-                        "usr_id": message['usr_id']
                     }
 
-                    await broker.publish(message=json.dumps(processing_msg_data))
+                    logger.info(usr_msg_data)
 
-                    async with httpx.AsyncClient() as client:
-                        payload = {
-                            'model': os.environ.get('OLLAMA_MODEL'),
-                            'tools':[
-                                    {
-                                        "type": "mcp",
-                                        "server_label": "netadmin_mcp_server",
-                                        "server_url": f"{message['url']}",
-                                        "require_approval": "never",
-                                    },
-                                ],
-                            'usr_input':f"{message['msg']}",
-                            'instructions': INSTRUCTIONS,
-                            'api_key': api,
-                            'user': message['usr'],
+                    await cl_auth_db.connect_db()
+                    await cl_data_db.connect_db()
+                    
+                    if await cl_auth_db.get_all_data(match=f'*uid:{message["usr"]}*', cnfrm=True) is True:
+
+                        # NETWORK ADMIN PROMPT
+                        INSTRUCTIONS = (
+                            "You are a Network Admin assistant with knowledge of "
+                            "network engineering, network administration, firewall configurations, and securing networks according to "
+                            "NIST, PCI DSS, GDPR, HIPAA and SOC 2 compliance standards. "
+                            "You have access to MCP servers with tools that execute common network administration functions. "
+                            "Always use the provided tools when applicable.\n"
+                            "IMPORTANT: Only answer questions that are related to the tools below or your network administration expertise. "
+                            "If a user asks something unrelated to the provided tools or prompt, DO NOT answer the question. "
+                            f"Instead, only reply with: '{REQUIRED_OUT_OF_SCOPE_MSG}.'. Do not give any other type of reply.\n"
+                            "If you are asked about your architecture, provider, or model identity, only respond with: "
+                            "'I am a proprietary language model trained and developed by Baugh Consulting & Lab L.L.C.'\n"
+                        )
+                        
+                        SUMMARY_INSTRUCTIONS = (
+                                "You are a Network Admin assistant with knowledge of "
+                                "network engineering, network administration, firewall configurations, and securing networks according to"
+                                "NIST, PCI DSS, GDPR, HIPAA and SOC 2 compliance standards."
+                                "Your only task is to analyze the outputs of traceroutes, iperf speedtests, nmap network scans, SNMP statistics and network packet captures. You will use this analysis to troubleshoot network performance issues, diagnose network outages, identify anomalies within current and historical network data and provide suggestions for network performance improvements."
+                            )
+                        
+                        probes = await cl_data_db.get_all_data(match=f"prb:{message['usr']}*")
+
+                        logger.info(probes)
+
+                        for k, v in probes.items():
+                            if v['url'] in message['url']:
+                                api = v['prb_api_key']
+                                logger.info(api)
+
+                        processing_msg_data = {
+                            "from": "agent",
+                            "msg": "Give me a minute, I'm thinking about your request. I'll get back to you in a few...",
+                            "url": message["url"],
+                            "usr_id": message['usr_id']
                         }
 
-                        headers = {'content-type': 'application/json'}
-                        
-                        tool_resp = await client.post(f"{os.environ.get('OLLAMA_PROXY_URL')}/multitools", json=payload, headers=headers, timeout=int(os.environ.get('REQUEST_TIMEOUT')))
+                        await broker.publish(message=json.dumps(processing_msg_data))
 
-                        # Extract agent response
-                        logger.info(tool_resp)
-                        logger.info(tool_resp.json())
-                        #logger.info(resp.output[0].content[0].text)
+                        tool_request, analysis_request = await run_sync(lambda: util_obj.split_analysis(text=message['msg']))()
 
-                        tool_msg = tool_resp.json()  
+                        logger.info(f'Tool request: {tool_request}')
 
-                        logger.info(tool_msg['output_text'])
+                        if analysis_request:
+                            logger.info(f'Analysis request: {analysis_request}')
 
-                        error_check = tool_msg['output_text']
-                       
-                        if error_check == REQUIRED_OUT_OF_SCOPE_MSG:
-                            err_msg_data = {
-                                "from": "agent",
-                                "msg": REQUIRED_OUT_OF_SCOPE_MSG,
-                                "url": message["url"],
-                                "usr_id": message['usr_id']
-                            }
-
-                            await broker.publish(message=json.dumps(err_msg_data))
-                        else:
-                            output_message = ""
-                            logger.info(f"Request result = {tool_msg['output_text']}\n")
-                            logger.info(type(tool_msg['output_text']))
-
-                            data = json.loads(tool_msg['output_text'])
-
-                            for item in data:
-                                net_cmd_output = item['output'][1]
-                                logger.info(f"Net command output: {net_cmd_output}")
-                                decoded_output = net_cmd_output.encode('utf-8').decode('unicode_escape')
-                                lines = decoded_output.split('\n')
-
-                                for i, line in enumerate(lines):
-                                    net_cmd_data = f'{line}\n'
-                                    output_message+=net_cmd_data
-
-                            smmry_payload = {
+                        async with httpx.AsyncClient() as client:
+                            payload = {
                                 'model': os.environ.get('OLLAMA_MODEL'),
-                                'usr_input':f"{output_message}",
-                                'instructions': SUMMARY_INSTRUCTIONS,
-                                'url': message['url'],
+                                'tools':[
+                                        {
+                                            "type": "mcp",
+                                            "server_label": "netadmin_mcp_server",
+                                            "server_url": f"{message['url']}",
+                                            "require_approval": "never",
+                                        },
+                                    ],
+                                'usr_input':f"{tool_request}",
+                                'instructions': INSTRUCTIONS,
                                 'api_key': api,
                                 'user': message['usr'],
                             }
 
-                            smmry_resp = await client.post(f"{os.environ.get('OLLAMA_PROXY_URL')}/summary", json=smmry_payload, headers=headers, timeout=int(os.environ.get('REQUEST_TIMEOUT')))
-
-                            logger.info(smmry_resp)
-                            logger.info(smmry_resp.json())
-
-                            summary_msg = smmry_resp.json()
-
-                            final_output = ""
-                            final_output+=f'{output_message}\n\n'
-                            final_output+=summary_msg['output_text']
-                            logger.info(final_output)
-
-                            time_stamp = datetime.now(timezone.utc).isoformat()
-
-                            chat_data_id = f"chat:{tool_msg['id']}{time_stamp}"
-
-                            chat_data = {'id': chat_data_id,
-                                         'usr_msg': message["msg"],
-                                         'agent_msg': final_output,
-                                         'timestamp': time_stamp
-                                        }
-
-                            chat_data_upload = await cl_data_db.upload_db_data(id=chat_data_id, data=chat_data)
-
-                            if chat_data_upload > 0:
-                                logger.info(f"Chat data uploaded successfully with id: {chat_data_id}")
+                            headers = {'content-type': 'application/json'}
                             
-                            agnt_msg_data = {
-                                "from": "agent",
-                                "msg": final_output,
-                                "url": message["url"],
-                                "usr_id": message['usr_id']
-                            }
-                    
-                            await broker.publish(message=json.dumps(agnt_msg_data))
-                         
-            case 'ping':
-                logger.debug(f"Received ping message: {message}")
+                            tool_resp = await client.post(f"{os.environ.get('OLLAMA_PROXY_URL')}/multitools", json=payload, headers=headers, timeout=int(os.environ.get('REQUEST_TIMEOUT')))
 
-                await cl_sess_db.connect_db()
+                            # Extract agent response
+                            logger.info(tool_resp)
+                            logger.info(tool_resp.json())
 
-                if await cl_sess_db.get_all_data(match=f'{message["sess_id"]}', cnfrm=True) is False:
-                    return Unauthorized()  # Session does not exist, ignore ping
-                
-                global auth_ping_counter
-                global connected_probes
-                
-                # Check if we have an expiry entry for this session and validate it
-                now = datetime.now(tz=timezone.utc)
+                            tool_msg = tool_resp.json()  
 
-                if message["sess_id"] in auth_ping_counter:
-                    entry = auth_ping_counter.get(message["sess_id"])
-                    exp = entry.get('exp')
+                            logger.info(tool_msg['output_text'])
 
-                    # If the stored expiry is still in the future, refresh it (sliding window)
-                    if exp and now <= exp:
-                        new_exp = round_up_to_5min(now + timedelta(minutes=5))
-                        entry['exp'] = new_exp
-                        auth_ping_counter[message["sess_id"]] = entry
-
-                        logger.debug(f"Refreshed ping expiry for session {message['sess_id']} to {new_exp}")
-
-                    """
-                    else:
-                        logger.info(f"Ping for session {message['sess_id']} received after expiry; dropping and removing entry")
-
-                        # Session expired: remove tracking and notify if needed
-                        auth_ping_counter.pop(message["sess_id"])
-
-                        # Remove user session profile from sess redis db/automatically invalidates active JWT tokens
-                        #auth_id = request.args.get('auth_id')
-                        cur_usr_id = message["sess_id"]
-
-                        await cl_sess_db.connect_db()
-                        if await cl_sess_db.get_all_data(match=f'{cur_usr_id}', cnfrm=True) is False:
-                            return Unauthorized()
+                            error_check = tool_msg['output_text']
                         
-                        result = await cl_sess_db.del_obj(key=cur_usr_id)
-                        logger.info(f"Session {message["sess_id"]} data removal result: {result}")
+                            if error_check == REQUIRED_OUT_OF_SCOPE_MSG:
+                                err_msg_data = {
+                                    "from": "agent",
+                                    "msg": REQUIRED_OUT_OF_SCOPE_MSG,
+                                    "url": message["url"],
+                                    "usr_id": message['usr_id']
+                                }
 
-                        # Clear JWT cookie
-                        resp = jsonify({"Session": "Logged out due to inactivity"})
-                        resp.delete_cookie("access_token")
-                        resp.delete_cookie("api_access_token")
+                                await broker.publish(message=json.dumps(err_msg_data))
+                            else:
+                                output_message = ""
+                                logger.info(f"Request result = {tool_msg['output_text']}\n")
+                                logger.info(type(tool_msg['output_text']))
 
-                        # quart-auth sign out
-                        #client_auth.logout_user()
-                        logger.info(f"User session {message["sess_id"]} logged out due to inactivity")
-                        return resp
+                                data = json.loads(tool_msg['output_text'])
+
+                                for item in data:
+                                    net_cmd_output = item['output'][1]
+                                    logger.info(f"Net command output: {net_cmd_output}")
+                                    decoded_output = net_cmd_output.encode('utf-8').decode('unicode_escape')
+                                    lines = decoded_output.split('\n')
+
+                                    for i, line in enumerate(lines):
+                                        net_cmd_data = f'{line}\n'
+                                        output_message+=net_cmd_data
+
+                                if analysis_request:
+                                    summary_msg = (
+                                        f"{output_message}\n\n"
+                                        f"{analysis_request}"
+                                        )
+
+                                    smmry_payload = {
+                                        'model': os.environ.get('OLLAMA_MODEL'),
+                                        'usr_input':f"{summary_msg}",
+                                        'instructions': SUMMARY_INSTRUCTIONS,
+                                        'url': message['url'],
+                                        'api_key': api,
+                                        'user': message['usr'],
+                                    }
+
+                                    smmry_resp = await client.post(f"{os.environ.get('OLLAMA_PROXY_URL')}/analysis", json=smmry_payload, headers=headers, timeout=int(os.environ.get('REQUEST_TIMEOUT')))
+
+                                    logger.info(smmry_resp)
+                                    logger.info(smmry_resp.json())
+
+                                    summary_msg = smmry_resp.json()
+
+                                    final_output = ""
+                                    final_output+=f'{output_message}\n\n'
+                                    final_output+=summary_msg['output_text']
+                                    logger.info(final_output)
+                                else:
+                                    final_output = output_message
+                                    
+                                time_stamp = datetime.now(timezone.utc).isoformat()
+
+                                chat_data_id = f"chat:{tool_msg['id']}{time_stamp}"
+
+                                chat_data = {'id': chat_data_id,
+                                            'usr_msg': message["msg"],
+                                            'agent_msg': final_output,
+                                            'timestamp': time_stamp
+                                            }
+
+                                if await cl_data_db.upload_db_data(id=chat_data_id, data=chat_data) > 0:
+                                    logger.info(f"Chat data uploaded successfully with id: {chat_data_id}")
+                                
+                                agnt_msg_data = {
+                                    "from": "agent",
+                                    "msg": final_output,
+                                    "url": message["url"],
+                                    "usr_id": message['usr_id']
+                                }
+                        
+                                await broker.publish(message=json.dumps(agnt_msg_data))
+                            
+                case 'ping':
+                    logger.debug(f"Received ping message: {message}")
+
+                    await cl_sess_db.connect_db()
+
+                    if await cl_sess_db.get_all_data(match=f'{message["sess_id"]}', cnfrm=True) is False:
+                        await ip_blocker(auto_ban=True)  # Session does not exist, ignore ping
                     
-                    """
+                    global auth_ping_counter
                     
-                """
-                else:
-                    # No entry existed — create a new one and respond with a 5 minute expiry
+                    # Check if we have an expiry entry for this session and validate it
                     now = datetime.now(tz=timezone.utc)
 
-                    pong_msg_data = {
-                        "sess_id": message["sess_id"],
-                        "exp": round_up_to_5min(now + timedelta(minutes=5)),
-                    }
+                    if message["sess_id"] in auth_ping_counter:
+                        entry = auth_ping_counter.get(message["sess_id"])
+                        exp = entry.get('exp')
 
-                    auth_ping_counter[message["sess_id"]] = pong_msg_data
-                    logger.debug(f"Created ping expiry for new session {message['sess_id']} -> {pong_msg_data['exp']}")
-                
-                """
-            case 'heart_beat':
-                now = datetime.now(tz=timezone.utc)
+                        # If the stored expiry is still in the future, refresh it (sliding window)
+                        if exp and now <= exp:
+                            new_exp = round_up_to_5min(now + timedelta(minutes=5))
+                            entry['exp'] = new_exp
+                            auth_ping_counter[message["sess_id"]] = entry
 
-                if message["sess_id"] in connected_probes:
-                    entry = connected_probes.get(message["sess_id"])
-                    exp = entry.get('exp')
+                            logger.debug(f"Refreshed ping expiry for session {message['sess_id']} to {new_exp}")
 
-                    # If the stored expiry is still in the future, refresh it (sliding window)
-                    if exp and now <= exp:
-                        new_exp = round_up_to_30sec(now + timedelta(seconds=30))
-                        entry['exp'] = new_exp
-                        connected_probes[message["sess_id"]] = entry
+                case 'heart_beat':
+                    logger.debug(f"Received probe {message['sess_id']} heartbeat: {message}")
 
-                        logger.debug(f"Refreshed ping expiry for session {message['sess_id']} to {new_exp}")
+                    global connected_probes
 
-            case "prb_act_rslt":
-                match message['act_rslt_type']:
-                    case 'pcap_lcl':
-                        data = message['act_rslt']  
-                    case 'pcap_tux':
-                        data = message['act_rslt']  
+                    now = datetime.now(tz=timezone.utc)
 
-            case _:
-                pass
+                    if message["sess_id"] in connected_probes:
+                        entry = connected_probes.get(message["sess_id"])
+                        exp = entry.get('exp')
+
+                        # If the stored expiry is still in the future, refresh it (sliding window)
+                        if exp and now <= exp:
+                            new_exp = round_up_to_30sec(now + timedelta(seconds=30))
+                            entry['exp'] = new_exp
+                            connected_probes[message["sess_id"]] = entry
+
+                            logger.debug(f"Refreshed ping expiry for session {message['sess_id']} to {new_exp}")
+
+                case "prb_act_rslt":
+                    match message['act_rslt_type']:
+                        case 'pcap_lcl':
+                            data = message['act_rslt']  
+                        case 'pcap_tux':
+                            data = message['act_rslt']  
+
+                case _:
+                    pass
+        else:
+            pass
 
 async def session_watchdog(sess_id: str, check_interval: float = 5.0):
     """

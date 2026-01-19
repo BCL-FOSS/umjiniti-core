@@ -418,8 +418,8 @@ async def multitools():
 
     return jsonify(response_payload)
 
-@app.route("/v1/summary", methods=["POST"])
-async def summary():
+@app.route("/v1/analysis", methods=["POST"])
+async def analysis():
     data = await request.get_json()
     logger.info(f"Incoming request: {data}")
 

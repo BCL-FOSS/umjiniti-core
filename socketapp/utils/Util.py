@@ -17,6 +17,8 @@ import jwt
 from datetime import datetime, timedelta, timezone
 from tzlocal import get_localzone
 import jwt
+import re
+from typing import Tuple
 
 class Util:
     def __init__(self):
@@ -48,6 +50,29 @@ class Util:
     
     def key_gen(self, size=6, chars=string.ascii_uppercase + string.digits):
         return ''.join(random.SystemRandom().choice(chars) for _ in range(size))
+    
+    def extract_after_analysis(self, text: str) -> str:
+        marker = "Analysis:"
+        index = text.find(marker)
+
+        if index == -1:
+            return ""
+
+        return text[index + len(marker):]
+
+    def split_analysis(self, text: str) -> Tuple[str, str]:
+        pattern = re.compile(r'analysis\s*:\s*', re.IGNORECASE)
+
+        match = pattern.search(text)
+        if not match:
+            return text, ""
+
+        cleaned_text = text[:match.start()].rstrip()
+        analysis_text = text[match.end():].lstrip()
+
+        return cleaned_text, analysis_text
+
+
 
 
         
