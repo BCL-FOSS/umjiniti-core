@@ -559,53 +559,57 @@ async def ws():
                 await cl_auth_db.connect_db()
                 await cl_sess_db.connect_db()
 
-                if await cl_auth_db.get_all_data(match=f'*uid:{user}*', cnfrm=True) and await cl_sess_db.get_all_data(match=f'{id}', cnfrm=True) is True:
+                if id is not None:
+
+                    if await cl_auth_db.get_all_data(match=f'*uid:{user}*', cnfrm=True) and await cl_sess_db.get_all_data(match=f'{id}', cnfrm=True) is True:
+                            
+                        account_data = await cl_sess_db.get_all_data(match=f'*{id}*')
+                        if account_data is None:
+                            await ip_blocker(auto_ban=True)
+                            await websocket.accept()
+                            await websocket.close(1000)
+                        else:
+                            logger.info(account_data)
+                            sub_dict = next(iter(account_data.values()))
+                            logger.info(sub_dict)
+
+                        jwt_key = sub_dict.get('usr_jwt_secret')
+                        logger.info(jwt_key)
+                        decoded_token = jwt.decode(jwt=jwt_token, key=jwt_key , algorithms=["HS256"])
+                        logger.info(decoded_token)
+
+                        if decoded_token.get('rand') != sub_dict.get('usr_rand'):
+                            await ip_blocker(auto_ban=True)
+                            await websocket.accept()
+                            await websocket.close(1010, 'Error occurred')
+
+                if probe_conn is not None:
+
+                    if await cl_auth_db.get_all_data(match=f'*uid:{user}*', cnfrm=True) and probe_conn.strip().lower() == 'y':
+                        user_data = await cl_auth_db.get_all_data(match=f'uid:{user}')
+                        user_data_dict = next(iter(user_data.values()))
+                        user_data_dict.get('db_id')
+
+                        api_data = await cl_data_db.get_all_data(match=f"api_dta:{user_data_dict.get('db_id')}")
+
+                        if api_data is None:
+                            return jsonify(error="Error occurred"), 404
+                            
+                        api_data_dict = next(iter(api_data.values()))
+                        logger.info(api_data_dict)
                         
-                    account_data = await cl_sess_db.get_all_data(match=f'*{id}*')
-                    if account_data is None:
-                        await ip_blocker(auto_ban=True)
-                        await websocket.accept()
-                        await websocket.close(1000)
-                    else:
-                        logger.info(account_data)
-                        sub_dict = next(iter(account_data.values()))
-                        logger.info(sub_dict)
+                        api_jwt_key = api_data_dict.get(f'{api_name}_jwt_secret')
+                        api_rand = api_data_dict.get(f'{api_name}_rand')
+                        decoded_token = jwt.decode(jwt=jwt_token, key=api_jwt_key, algorithms=["HS256"])
 
-                    jwt_key = sub_dict.get('usr_jwt_secret')
-                    logger.info(jwt_key)
-                    decoded_token = jwt.decode(jwt=jwt_token, key=jwt_key , algorithms=["HS256"])
-                    logger.info(decoded_token)
-
-                    if decoded_token.get('rand') != sub_dict.get('usr_rand'):
-                        await ip_blocker(auto_ban=True)
-                        await websocket.accept()
-                        await websocket.close(1010, 'Error occurred')
-
-                if await cl_auth_db.get_all_data(match=f'*uid:{user}*', cnfrm=True) and probe_conn.strip().lower() == 'y':
-                    user_data = await cl_auth_db.get_all_data(match=f'uid:{user}')
-                    user_data_dict = next(iter(user_data.values()))
-                    user_data_dict.get('db_id')
-
-                    api_data = await cl_data_db.get_all_data(match=f"api_dta:{user_data_dict.get('db_id')}")
-
-                    if api_data is None:
-                        return jsonify(error="Error occurred"), 404
-                        
-                    api_data_dict = next(iter(api_data.values()))
-                    logger.info(api_data_dict)
-                    
-                    api_jwt_key = api_data_dict.get(f'{api_name}_jwt_secret')
-                    api_rand = api_data_dict.get(f'{api_name}_rand')
-                    decoded_token = jwt.decode(jwt=jwt_token, key=api_jwt_key, algorithms=["HS256"])
-
-                    if decoded_token.get('rand') != api_rand:
-                        await ip_blocker(auto_ban=True)
-                        await websocket.accept()
-                        await websocket.close(1010, 'Error occurred')
+                        if decoded_token.get('rand') != api_rand:
+                            await ip_blocker(auto_ban=True)
+                            await websocket.accept()
+                            await websocket.close(1010, 'Error occurred')
                         
                 logger.info('websocket authentication successful')
 
-                if id and not auth_ping_counter[id]:
+                if id is not None and not auth_ping_counter[id]:
                     # Initialize a session expiry entry for this connection so that a missing ping
                     # during the first 5 minutes will still expire the session.
                     now = datetime.now(tz=timezone.utc)
@@ -619,7 +623,7 @@ async def ws():
 
                     monitor_task = asyncio.create_task(session_watchdog(sess_id=id))
 
-                if probe_id and not connected_probes[probe_id]:
+                if probe_id is not None and not connected_probes[probe_id]:
                     now = datetime.now(tz=timezone.utc)
                     connected_probes[probe_id] = {'conn_start': now,
                                                   'id': probe_id,
