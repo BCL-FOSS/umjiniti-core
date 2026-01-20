@@ -383,8 +383,8 @@ async def session_watchdog(sess_id: str, check_interval: float = 5.0):
     check_interval controls how often we poll the expiry (seconds).
     """
     logger.info(f"Starting session watchdog for {sess_id}")
-    try:
-        while True:
+    while True:
+        try:
             USER = False
             PROBE = False
 
@@ -397,7 +397,7 @@ async def session_watchdog(sess_id: str, check_interval: float = 5.0):
                 PROBE = True
 
             now = datetime.now(tz=timezone.utc)
-            
+                
             if not entry:
                 # No entry yet (client hasn't pinged). We still want to expire after specified time from connection start,
                 # but the connection code initializes an entry at connect. So just sleep and continue.
@@ -432,9 +432,9 @@ async def session_watchdog(sess_id: str, check_interval: float = 5.0):
                     cur_usr_id = sess_id
                     await cl_sess_db.connect_db()
                     if await cl_sess_db.get_all_data(match=f'{cur_usr_id}', cnfrm=True) is False:
-                            await ip_blocker(auto_ban=True)
-                            return Unauthorized()
-                        
+                        await ip_blocker(auto_ban=True)
+                        return Unauthorized()
+                            
                     result = await cl_sess_db.del_obj(key=cur_usr_id)
                     logger.info(f"Session {sess_id} data removal result: {result}")
 
@@ -445,7 +445,7 @@ async def session_watchdog(sess_id: str, check_interval: float = 5.0):
 
                     logger.info(f"User session {sess_id} logged out due to inactivity")
                     return resp
-                
+                    
                 if PROBE is True:
                     logger.info('Probe is either offline or a network outage has occurred.')
                     connected_probes.pop(sess_id)
@@ -453,10 +453,10 @@ async def session_watchdog(sess_id: str, check_interval: float = 5.0):
                     probe_data_dict = next(iter(probe_data.values()))
 
                     probe_outage_data = {'alert_type': 'outage',
-                                         'site': probe_data_dict.get('site'),
-                                         'name': probe_data_dict.get('name'),
-                                         'url': probe_data_dict.get('url'),
-                                         'timestamp': datetime.now(tz=timezone.utc)}
+                                            'site': probe_data_dict.get('site'),
+                                            'name': probe_data_dict.get('name'),
+                                            'url': probe_data_dict.get('url'),
+                                            'timestamp': datetime.now(tz=timezone.utc)}
 
                     await broker.publish(message=json.dumps(probe_outage_data))
 
@@ -466,30 +466,51 @@ async def session_watchdog(sess_id: str, check_interval: float = 5.0):
                 sleep_for = min(check_interval, max(seconds_to_expiry, 0))
                 logger.debug(f"Session {sess_id} not yet expired (expires at {exp_quant}), sleeping for {sleep_for} seconds")
                 await asyncio.sleep(sleep_for)
-                
-    except asyncio.CancelledError:
-        logger.info(f"Session watchdog for {sess_id} cancelled")
-        if USER is True:
-            auth_ping_counter.pop(sess_id)
-            cur_usr_id = sess_id
+                    
+        except asyncio.CancelledError:
+            logger.info(f"Session watchdog for {sess_id} cancelled")
+            if USER is True:
+                auth_ping_counter.pop(sess_id)
+                cur_usr_id = sess_id
 
-            await cl_sess_db.connect_db()
-            if await cl_sess_db.get_all_data(match=f'{cur_usr_id}', cnfrm=True) is False:
-                return Unauthorized()
-                        
-            result = await cl_sess_db.del_obj(key=cur_usr_id)
-            logger.info(f"Session {sess_id} data removal result: {result}")
+                await cl_sess_db.connect_db()
+                if await cl_sess_db.get_all_data(match=f'{cur_usr_id}', cnfrm=True) is False:
+                    return Unauthorized()
+                            
+                result = await cl_sess_db.del_obj(key=cur_usr_id)
+                logger.info(f"Session {sess_id} data removal result: {result}")
 
-            resp = jsonify({"Session": "Logged out as user ended session"})
-            resp.delete_cookie("access_token")
-            resp.delete_cookie("api_access_token")
+                resp = jsonify({"Session": "Logged out as user ended session"})
+                resp.delete_cookie("access_token")
+                resp.delete_cookie("api_access_token")
 
-            logger.info(f"User session {sess_id} logged out due to session end")
-            return resp
-        if PROBE is True:
-            connected_probes.pop(sess_id)
-    except Exception as e:
-        logger.exception(f"Unhandled error in session_watchdog for {sess_id}: {e}")
+                logger.info(f"User session {sess_id} logged out due to session end")
+                return resp
+            if PROBE is True:
+                connected_probes.pop(sess_id)
+                return
+        except Exception as e:
+            logger.exception(f"Error in session_watchdog for {sess_id}: {e}")
+            if USER is True:
+                auth_ping_counter.pop(sess_id)
+                cur_usr_id = sess_id
+
+                await cl_sess_db.connect_db()
+                if await cl_sess_db.get_all_data(match=f'{cur_usr_id}', cnfrm=True) is False:
+                    return Unauthorized()
+                            
+                result = await cl_sess_db.del_obj(key=cur_usr_id)
+                logger.info(f"Session {sess_id} data removal result: {result}")
+
+                resp = jsonify({"Session": "Logged out as user ended session"})
+                resp.delete_cookie("access_token")
+                resp.delete_cookie("api_access_token")
+
+                logger.info(f"User session {sess_id} logged out due to session end")
+                return resp
+            if PROBE is True:
+                connected_probes.pop(sess_id)
+                return
 
 @app.before_request
 async def check_ip():
