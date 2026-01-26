@@ -1,16 +1,9 @@
 import uuid
 import re
-from wtforms.validators import ValidationError
 import string
 import random
-from quart import flash
 import logging
 import os
-import sys
-from pathlib import Path
-import subprocess
-import asyncio
-from quart import (flash, redirect, url_for)
 import logging
 import os
 import jwt
@@ -19,6 +12,9 @@ from tzlocal import get_localzone
 import jwt
 import re
 from typing import Tuple
+import os
+import jwt
+from datetime import datetime, timedelta, timezone
 
 class Util:
     def __init__(self):
@@ -71,20 +67,4 @@ class Util:
         analysis_text = text[match.end():].lstrip()
 
         return cleaned_text, analysis_text
-
-
-
-
-        
     
-
-
-    
-        
-        
-        
-        
-
-
-
-
