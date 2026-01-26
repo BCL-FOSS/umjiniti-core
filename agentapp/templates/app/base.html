@@ -471,7 +471,7 @@
             } else {
                 console.warn('WebSocket is not open, cannot send message.');
                 // Optionally, clear the interval if the connection is permanently closed
-                // clearInterval(intervalId);
+                clearInterval(intervalId);
             }
         }, 5 * 60 * 1000); // 5 minutes in milliseconds
 
