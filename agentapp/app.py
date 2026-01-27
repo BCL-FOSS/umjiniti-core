@@ -90,7 +90,7 @@ def user_login_required(func):
         jwt_token = request.cookies.get("access_token")
 
         if auth_id is None or "".strip() or await cl_sess_db.get_all_data(match=f"{auth_id}", cnfrm=True) is False or jwt_token is None or "".strip():
-            await ip_blocker(auto_ban=True)
+            await ip_blocker()
             return Unauthorized()
         
         logger.info(f"JWT Token from cookie: {jwt_token}")
@@ -105,18 +105,18 @@ def user_login_required(func):
             try:
                 decoded_token = jwt.decode(jwt=jwt_token, key=jwt_key , algorithms=["HS256"])
             except jwt.InvalidTokenError:
-                await ip_blocker(auto_ban=True)
+                await ip_blocker()
                 return Unauthorized()
             except jwt.ExpiredSignatureError:
-                await ip_blocker(auto_ban=True)
+                await ip_blocker()
                 return Unauthorized()
             except jwt.DecodeError:
-                await ip_blocker(auto_ban=True)
+                await ip_blocker()
                 return Unauthorized()
             logger.info(decoded_token)
 
             if decoded_token.get('rand') != sub_dict.get('usr_rand'):
-                await ip_blocker(auto_ban=True)
+                await ip_blocker()
                 return Unauthorized()
                     
             return await app.ensure_async(func)(*args, **kwargs)
@@ -330,7 +330,7 @@ async def logout(auth_id):
 
         await cl_sess_db.connect_db()
         if await cl_sess_db.get_all_data(match=f'{cur_usr_id}', cnfrm=True) is False:
-            await ip_blocker(auto_ban=True)
+            await ip_blocker()
             return Unauthorized()
         
         result = await cl_sess_db.del_obj(key=cur_usr_id)

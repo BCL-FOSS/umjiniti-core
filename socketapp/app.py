@@ -649,7 +649,7 @@ async def ws():
             else:
                 raise Exception()
         else:
-           await ip_blocker(conn_obj=websocket, auto_ban=True)
+           await ip_blocker(conn_obj=websocket)
            raise Exception()
     except Exception as e:
         logger.error(e)
