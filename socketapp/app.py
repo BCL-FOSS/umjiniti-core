@@ -478,8 +478,6 @@ async def session_watchdog(sess_id: str, check_interval: float = 5.0):
 
             if PROBE is True:
                 connected_probes.pop(sess_id)
-
-            raise asyncio.CancelledError()
                 
         except Exception as e:
             logger.exception(f"Error in session_watchdog for {sess_id}: {e}")
@@ -492,8 +490,6 @@ async def session_watchdog(sess_id: str, check_interval: float = 5.0):
 
             if PROBE is True:
                 connected_probes.pop(sess_id)
-
-            raise Exception()
 
 @app.before_request
 async def check_ip():
