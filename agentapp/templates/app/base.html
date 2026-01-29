@@ -460,6 +460,7 @@
         console.log("WebSocket connected");
 
         // Set up an interval to send a message every 5 minutes (300,000 milliseconds)
+   
         const intervalId = setInterval(() => {
             if (ws.readyState === WebSocket.OPEN) {
                 const message = JSON.stringify({
@@ -474,6 +475,8 @@
                 clearInterval(intervalId);
             }
         }, 5 * 60 * 1000); // 5 minutes in milliseconds
+
+        
 
         ws.onerror = (err) => {
           console.error("WebSocket error:", err);

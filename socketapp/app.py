@@ -458,27 +458,10 @@ async def session_watchdog(sess_id: str, check_interval: float = 5.0):
                     
         except asyncio.CancelledError:
             logger.info(f"Session watchdog for {sess_id} cancelled")
-            if USER is True:
-                auth_ping_counter.pop(sess_id)
-                cur_usr_id = sess_id
-                await cl_sess_db.connect_db()
-                result = await cl_sess_db.del_obj(key=cur_usr_id)
-                logger.info(f"Session {sess_id} data removal result: {result}")
-
-            if PROBE is True:
-                connected_probes.pop(sess_id)
+            raise
                 
         except Exception as e:
             logger.exception(f"Error in session_watchdog for {sess_id}: {e}")
-            if USER is True:
-                auth_ping_counter.pop(sess_id)
-                cur_usr_id = sess_id
-                await cl_sess_db.connect_db()
-                result = await cl_sess_db.del_obj(key=cur_usr_id)
-                logger.info(f"Session {sess_id} data removal result: {result}")
-
-            if PROBE is True:
-                connected_probes.pop(sess_id)
 
 @app.before_request
 async def check_ip():
@@ -511,7 +494,6 @@ async def ws():
             probe_id = None
             recv_task = None
             monitor_task = None
-            user_sign_out_resp = None
 
             if websocket.args.get('id') is not None:
                 id = websocket.args.get('id')
@@ -597,7 +579,7 @@ async def ws():
                                 "exp": round_up_to_5min(now + timedelta(minutes=5, seconds=0, microseconds=0)), # First expiry 5 minutes from now, quantized down
                         }
                     logger.debug(f"Initialized ping expiry for session {id} -> {auth_ping_counter[id]['exp']}")
-
+                    
                     recv_task = asyncio.ensure_future(_receive())
 
                     monitor_task = asyncio.create_task(session_watchdog(sess_id=id))
@@ -630,12 +612,8 @@ async def ws():
            raise Exception()
     except Exception as e:
         logger.error(e)
-    except asyncio.CancelledError:
-        logger.error(asyncio.CancelledError)
-        user_sign_out_resp = jsonify({"Session": "Logged out as user ended session"})
-        user_sign_out_resp.delete_cookie("access_token")
-        user_sign_out_resp.delete_cookie("api_access_token")
-
+    except asyncio.CancelledError as e:
+        logger.error(e)
     except ExpiredSignatureError:
         logger.warning("JWT expired, need to refresh token")
         await ip_blocker(conn_obj=websocket)
@@ -645,34 +623,13 @@ async def ws():
         await ip_blocker(conn_obj=websocket)
         logger.error(InvalidTokenError)
     finally:
-        
-        # Cancel background tasks if they were created
-        try:
-            if recv_task is not None:
-                recv_task.cancel()
-                try:
-                    await recv_task
-                except asyncio.CancelledError:
-                    pass
-
-            if monitor_task is not None:
-                monitor_task.cancel()
-                try:
-                    await monitor_task
-                except asyncio.CancelledError:
-                    pass
-        except Exception:
-            logger.exception("Task await failed")
-
-        # Close websocket but ignore if client already disconnected
-        try:
-            await websocket.close(1000)
-        except Exception as exc:
-            # wsproto may raise ClientDisconnected or RuntimeError if already closed
-            logger.debug(f"Ignoring websocket close error: {exc}")
-
-        if user_sign_out_resp:
-            return user_sign_out_resp
+        if recv_task and monitor_task:
+            recv_task.cancel()
+            monitor_task.cancel()
+            await recv_task
+            await monitor_task
+        await websocket.accept()
+        await websocket.close(1000)
 
 @app.route('/init', methods=['GET'])
 async def init():
@@ -1193,6 +1150,8 @@ async def resetapi():
 async def createapi():
     jwt_token = request.cookies.get("access_token")
     sess_id = request.args.get('sess_id')
+
+    logger.info(f"Create API JWT: {jwt_token}, SESS: {sess_id}")
 
     if not jwt_token or not sess_id:
         await ip_blocker(conn_obj=request)
