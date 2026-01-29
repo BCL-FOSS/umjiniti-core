@@ -1236,7 +1236,7 @@ async def createapi():
 
             if api_email_sent['message_id']:
                 logger.info('API key creation successful. Check your email for the new API key.')
-                return jsonify('API key creation successful. Check your email for the new API key.')        
+                return jsonify('API key creation successful. Check your email for the new API key.'), 200       
         else:
             return jsonify('API key creation failed'), 400
 
