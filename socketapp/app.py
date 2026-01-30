@@ -635,13 +635,32 @@ async def ws():
         await ip_blocker(conn_obj=websocket)
         logger.error(InvalidTokenError)
     finally:
-        if recv_task and monitor_task:
+        if recv_task:
             recv_task.cancel()
+            try:
+                await recv_task
+            except asyncio.CancelledError:
+                pass
+            except Exception:
+                logger.exception("Error while awaiting monitor_task shutdown")
+        
+        if monitor_task:
             monitor_task.cancel()
-            await recv_task
-            await monitor_task
-        await websocket.accept()
-        await websocket.close(1000)
+            try:
+                await monitor_task
+            except asyncio.CancelledError:
+                pass
+            except Exception:
+                logger.exception("Error while awaiting monitor_task shutdown")
+
+        # Close the websocket if still open. Do not call accept() here.
+        try:
+            await websocket.close(code=1000)
+        except RuntimeError:
+            # If the websocket is already closed or not in a state to close, ignore.
+            pass
+        except Exception:
+            logger.exception("Error closing websocket in cleanup")
 
 @app.route('/init', methods=['GET'])
 async def init():
