@@ -625,70 +625,22 @@ async def ws():
     except Exception as e:
         logger.error(e)
     except asyncio.CancelledError as e:
-        if recv_task:
-            recv_task.cancel()
-            try:
-                await recv_task
-            except asyncio.CancelledError:
-                pass
-            except Exception:
-                logger.exception("Error while awaiting monitor_task shutdown")
-        
-        if monitor_task:
-            monitor_task.cancel()
-            try:
-                await monitor_task
-            except asyncio.CancelledError:
-                pass
-            except Exception:
-                logger.exception("Error while awaiting monitor_task shutdown")
-
         logger.error(e)
     except ExpiredSignatureError:
         logger.warning("JWT expired, need to refresh token")
         await ip_blocker(conn_obj=websocket)
         logger.error(ExpiredSignatureError)
-
-        if recv_task:
-            recv_task.cancel()
-            try:
-                await recv_task
-            except asyncio.CancelledError:
-                pass
-            except Exception:
-                logger.exception("Error while awaiting monitor_task shutdown")
-        
-        if monitor_task:
-            monitor_task.cancel()
-            try:
-                await monitor_task
-            except asyncio.CancelledError:
-                pass
-            except Exception:
-                logger.exception("Error while awaiting monitor_task shutdown")
-        
     except InvalidTokenError as e:
         logger.error(f"JWT invalid: {e}")
         await ip_blocker(conn_obj=websocket)
         logger.error(InvalidTokenError)
-
-        if recv_task:
+    finally:
+        if recv_task and monitor_task:
             recv_task.cancel()
-            try:
-                await recv_task
-            except asyncio.CancelledError:
-                pass
-            except Exception:
-                logger.exception("Error while awaiting monitor_task shutdown")
-        
-        if monitor_task:
             monitor_task.cancel()
-            try:
-                await monitor_task
-            except asyncio.CancelledError:
-                pass
-            except Exception:
-                logger.exception("Error while awaiting monitor_task shutdown")
+            await recv_task
+            await monitor_task
+        await websocket.close(1000)
 
 @app.route('/init', methods=['GET'])
 async def init():
