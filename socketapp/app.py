@@ -634,9 +634,12 @@ async def ws():
         logger.error(InvalidTokenError)
     finally:
         if monitor_task:
-            monitor_task.cancel()
-            await monitor_task
-
+            try:
+                monitor_task.cancel()
+                await monitor_task
+            except Exception as e:
+                logger.error(f"Error cancelling monitor task: {e}")
+                pass
         try:
             await websocket.close()
         except RuntimeError:
