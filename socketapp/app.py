@@ -477,12 +477,10 @@ async def check_ip_ws():
 
     if await ip_ban_db.get_all_data(match=f"blocked_ip:{websocket.access_route[-1]}", cnfrm=True) is True:
         try:
-            await websocket.accept()
-            await websocket.close(3000)
+            await websocket.close()
         except RuntimeError:
             return None
         
-    
 @app.websocket("/ws")
 @rate_exempt
 async def ws():
@@ -582,12 +580,12 @@ async def ws():
                         }
                     logger.debug(f"Initialized ping expiry for session {id} -> {auth_ping_counter[id]['exp']}")
                     
-                    recv_task = asyncio.ensure_future(_receive())
+                    asyncio.ensure_future(_receive())
 
                     monitor_task = asyncio.create_task(session_watchdog(sess_id=id))
 
                 if id and (id in auth_ping_counter):
-                    recv_task = asyncio.ensure_future(_receive())
+                    asyncio.ensure_future(_receive())
 
                     monitor_task = asyncio.create_task(session_watchdog(sess_id=id))
 
@@ -599,12 +597,12 @@ async def ws():
                                                   }
                     logger.debug(f"Initialized ping expiry for session {probe_id} -> {connected_probes[probe_id]['exp']}")
 
-                    recv_task = asyncio.ensure_future(_receive())
+                    asyncio.ensure_future(_receive())
 
                     monitor_task = asyncio.create_task(session_watchdog(sess_id=probe_id))
 
                 if probe_id and (probe_id in connected_probes):
-                    recv_task = asyncio.ensure_future(_receive())
+                    asyncio.ensure_future(_receive())
 
                     monitor_task = asyncio.create_task(session_watchdog(sess_id=probe_id))
 
@@ -635,12 +633,14 @@ async def ws():
         await ip_blocker(conn_obj=websocket)
         logger.error(InvalidTokenError)
     finally:
-        if recv_task and monitor_task:
-            recv_task.cancel()
+        if monitor_task:
             monitor_task.cancel()
-            await recv_task
             await monitor_task
-        await websocket.close(1000)
+
+        try:
+            await websocket.close()
+        except RuntimeError:
+            pass
 
 @app.route('/init', methods=['GET'])
 async def init():
