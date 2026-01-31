@@ -489,8 +489,17 @@ async def heartbeat():
         probe_id = None
         monitor_task = None
 
-        if websocket.args.get('prb_id') is not None:
-            probe_id = websocket.args.get('prb_id')
+        if websocket.args.get('prb_id') is None:
+            await ip_blocker(conn_obj=websocket)
+            await websocket.close()
+        
+        probe_id = websocket.args.get('prb_id')
+
+        await cl_data_db.connect_db()  
+
+        if await cl_data_db.get_all_data(match=f"*{probe_id}*", cnfrm=True) is False:
+            await ip_blocker(conn_obj=websocket)
+            await websocket.close()
 
         if probe_id and (probe_id not in connected_probes):
             now = datetime.now(tz=timezone.utc)
