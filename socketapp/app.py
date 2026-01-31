@@ -565,6 +565,7 @@ async def ws():
                         decoded_token = jwt.decode(jwt=jwt_token, key=api_jwt_key, algorithms=["HS256"])
 
                         if decoded_token.get('rand') != api_rand:
+                            logger.error(f"Probe JWT rand does not match stored api_rand\n\nToken: {decoded_token}\n\nStored api_rand: {api_rand}")
                             raise InvalidTokenError()
                         
                 logger.info('websocket authentication successful')
