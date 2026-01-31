@@ -546,7 +546,7 @@ async def ws():
 
                 if probe_conn is not None:
 
-                    if await cl_auth_db.get_all_data(match=f'*uid:{user}*', cnfrm=True) and probe_conn.strip().lower() == 'y':
+                    if await cl_auth_db.get_all_data(match=f'*uid:{user}*', cnfrm=True):
                         user_data = await cl_auth_db.get_all_data(match=f'*uid:{user}*')
                         user_data_dict = next(iter(user_data.values()))
                         logger.info(user_data_dict.get('db_id'))
