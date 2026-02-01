@@ -37,6 +37,13 @@
     <link href="{{ url_for('static', filename='css/drawflow.min.css') }}" rel="stylesheet" />
     <link href="{{ url_for('static', filename='css/workflow.css') }}" rel="stylesheet" />
 
+    <!-- Select2 -->
+    <link href="{{ url_for('static', filename='css/select2_css/select2.min.css') }}" rel="stylesheet" />
+    <link href="{{ url_for('static', filename='css/select2_css/select2-bootstrap-5-theme.min.css') }}" rel="stylesheet" />
+    <script src="{{ url_for('static', filename='js/select2_js/jquery.slim.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/select2_js/bootstrap.bundle.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/select2_js/select2.full.min.js') }}"></script>
+    
     <style>
       #network { width: 100%; height: 85vh; background: #f0f0f0; border: 1px solid #ccc; }
       body { font-family: Arial, sans-serif; }
@@ -585,6 +592,57 @@
     let selectedValue = document.getElementById("mcp-dropdown").value;
     const chatInput = document.getElementById("chat-input");
     const chatSend = document.getElementById("chat-send");
+    const automationSwitch = document.getElementById("automationSwitch");
+    const llmAnalysisSwitch = document.getElementById("llmAnalysisSwitch");
+    const pcapInit = document.getElementById("pcap-init");
+    const scanInit = document.getElementById("scan-init");
+    const iperfInit = document.getElementById("iperf-init");
+    const trcrtInit = document.getElementById("trcrt-init");
+
+    const taskDays = document.getElementById('task-days').select2( {
+      theme: "bootstrap-5",
+      width: $( this ).data( 'width' ) ? $( this ).data( 'width' ) : $( this ).hasClass( 'w-100' ) ? '100%' : 'style',
+      placeholder: $( this ).data( 'placeholder' ),
+      closeOnSelect: false,
+      allowClear: true,
+      tags: true
+    } );
+
+    const taskMonths = document.getElementById('task-months').select2( {
+      theme: "bootstrap-5",
+      width: $( this ).data( 'width' ) ? $( this ).data( 'width' ) : $( this ).hasClass( 'w-100' ) ? '100%' : 'style',
+      placeholder: $( this ).data( 'placeholder' ),
+      closeOnSelect: false,
+      allowClear: true,
+      tags: true
+    } );
+
+    const taskHours = document.getElementById('task-hours').select2( {
+      theme: "bootstrap-5",
+      width: $( this ).data( 'width' ) ? $( this ).data( 'width' ) : $( this ).hasClass( 'w-100' ) ? '100%' : 'style',
+      placeholder: $( this ).data( 'placeholder' ),
+      closeOnSelect: false,
+      allowClear: true,
+      tags: true
+    } );
+
+    const taskMinutes = document.getElementById('task-minutes').select2( {
+      theme: "bootstrap-5",
+      width: $( this ).data( 'width' ) ? $( this ).data( 'width' ) : $( this ).hasClass( 'w-100' ) ? '100%' : 'style',
+      placeholder: $( this ).data( 'placeholder' ),
+      closeOnSelect: false,
+      allowClear: true,
+      tags: true
+    } );
+
+    const taskDom = document.getElementById('task-dom').select2( {
+      theme: "bootstrap-5",
+      width: $( this ).data( 'width' ) ? $( this ).data( 'width' ) : $( this ).hasClass( 'w-100' ) ? '100%' : 'style',
+      placeholder: $( this ).data( 'placeholder' ),
+      closeOnSelect: false,
+      allowClear: true,
+      tags: true
+    } );
 
     function appendMessage(chatWin, from, text) {
       chatWin.innerHTML+= `<p><strong>${from}</strong></p>`;
@@ -645,7 +703,212 @@
       appendUserMessage(chatWin, "user", msg);
     }
 
+    function sendTraceTask() {
+      const traceType = document.getElementById("trcrt-dropdown").value;
+      const traceTarget = document.getElementById("trcrt-target").value;
+      const traceDNSServer = document.getElementById("trcrt-dns-test-server").value;
+      const traceOptions = document.getElementById("trcrt-options").value;
+      const tracePacketLen = document.getElementById("trcrt-packetlen").value;
+      const current_pid =  document.getElementById("probe-id-modal").dataset.pid;
+
+      if (!traceType || !traceTarget) {
+        alert('Missing required traceroute parameters.');
+      }
+
+      let taskData = {
+        "act": "prb_task_init",
+        "prb_id": current_pid,
+        "task": traceType,
+        "prms": {
+          "target": traceTarget
+        }
+      };
+
+      if (traceDNSServer) {
+        taskData["prms"]["server"] = traceDNSServer;
+      }
+
+      if (traceOptions) {
+        taskData["prms"]["options"] = traceOptions;
+      }
+
+      if (tracePacketLen) {
+        taskData["prms"]["packetlen"] = tracePacketLen;
+      }
+
+      if (automationSwitch.checked){
+        taskData["automate"] = 'y';
+        taskData["days"] = taskDays.val();
+        taskData["months"] = taskMonths.val();
+        taskData["hours"] = taskHours.val();
+        taskData["minutes"] = taskMinutes.val();
+        taskData["dom"] = taskDom.val();
+      } else {
+        taskData["automate"] = 'n';
+      }
+
+      if (llmAnalysisSwitch.checked){
+        taskData["llm_analysis"] = 'y';
+      } else {
+        taskData["llm_analysis"] = 'n';
+      }
+
+      ws.send(JSON.stringify(taskData));
+    }
+
+    function sendIperfTask() {
+      const spdtstType = document.getElementById("spdtst-dropdown").value;
+      const spdtstClientOptions = document.getElementById("spdtst-clnt-options").value;
+      const spdtstOptions = document.getElementById("spdtst-options").value;
+      const current_pid =  document.getElementById("probe-id-modal").dataset.pid;
+
+      if (!spdtstType) {
+        alert('Missing required performance test parameters.');
+      }
+
+      let taskData = {
+        "act": "prb_task_init",
+        "prb_id": current_pid,
+        "task": spdtstType
+      };
+
+      if (spdtstClientOptions && spdtstType === "spdtst_clnt") {
+        taskData["prms"]["server"] = spdtstClientOptions;
+      }
+
+      if (spdtstOptions) {
+        taskData["prms"]["options"] = spdtstOptions;
+      }
+
+      if (automationSwitch.checked){
+        taskData["automate"] = 'y';
+        taskData["days"] = taskDays.val();
+        taskData["months"] = taskMonths.val();
+        taskData["hours"] = taskHours.val();
+        taskData["minutes"] = taskMinutes.val();
+        taskData["dom"] = taskDom.val();
+      } else {
+        taskData["automate"] = 'n';
+      }
+
+      if (llmAnalysisSwitch.checked){
+        taskData["llm_analysis"] = 'y';
+      } else {
+        taskData["llm_analysis"] = 'n';
+      }
+
+      ws.send(JSON.stringify(taskData));
+    }
+
+    function sendScanTask() {
+      const scanType = document.getElementById("scan-dropdown").value;
+      const scanTarget = document.getElementById("scan-target").value;
+      const scanInterface = document.getElementById("scan-interface").value;
+      const scanOptions = document.getElementById("scan-options").value;
+      const current_pid =  document.getElementById("probe-id-modal").dataset.pid;
+
+      if (!scanType && !scanTarget) {
+        alert('Missing required performance test parameters.');
+      }
+
+      let taskData = {
+        "act": "prb_task_init",
+        "prb_id": current_pid,
+        "task": scanType,
+        "prms": {
+          "subnet": scanTarget
+        }
+      };
+
+      if (scanInterface) {
+        taskData["interface"] = scanInterface;
+      }
+
+      if (scanOptions && scanType === "scan_custom") {
+        taskData["prms"]["options"] = scanOptions;
+      }
+
+      if (automationSwitch.checked){
+        taskData["automate"] = 'y';
+        taskData["days"] = taskDays.val();
+        taskData["months"] = taskMonths.val();
+        taskData["hours"] = taskHours.val();
+        taskData["minutes"] = taskMinutes.val();
+        taskData["dom"] = taskDom.val();
+      } else {
+        taskData["automate"] = 'n';
+      }
+
+      if (llmAnalysisSwitch.checked){
+        taskData["llm_analysis"] = 'y';
+      } else {
+        taskData["llm_analysis"] = 'n';
+      }
+
+      ws.send(JSON.stringify(taskData));
+    }
+
+    function sendPcapTask() {
+      const pcapType = document.getElementById("pcap-dropdown").value;
+      const pcapInterface = document.getElementById("pcap-interface").value;
+      const pcapCount = document.getElementById("pcap-count-target").value;
+      const pcapDuration = document.getElementById("pcap-duration-target").value;
+      const current_pid =  document.getElementById("probe-id-modal").dataset.pid;
+
+      if (!pcapType) {
+        alert('Missing required performance test parameters.');
+      }
+
+      let taskData = {
+        "act": "prb_task_init",
+        "prb_id": current_pid,
+        "task": pcapType
+      };
+
+      if (pcapInterface && pcapType != "pcap_lcl") {
+        taskData["prms"]["remote_iface"] = pcapInterface;
+      }
+
+      if (pcapInterface && pcapType === "pcap_lcl") {
+        taskData["prms"]["interface"] = pcapInterface;
+      }
+      if (pcapDuration && pcapType !== "pcap_win") {
+        taskData["prms"]["duration"] = pcapDuration;
+      }
+
+      if (pcapCount && pcapType === "pcap_tux") {
+        taskData["prms"]["cap_count"] = pcapCount;
+      }
+
+      if (automationSwitch.checked){
+        taskData["automate"] = 'y';
+        taskData["days"] = taskDays.val();
+        taskData["months"] = taskMonths.val();
+        taskData["hours"] = taskHours.val();
+        taskData["minutes"] = taskMinutes.val();
+        taskData["dom"] = taskDom.val();
+      } else {
+        taskData["automate"] = 'n';
+      }
+
+      if (llmAnalysisSwitch.checked){
+        taskData["llm_analysis"] = 'y';
+      } else {
+        taskData["llm_analysis"] = 'n';
+      }
+
+      ws.send(JSON.stringify(taskData));
+    }
+
+    // LLM Chat event listeners
     chatSend.addEventListener("click", sendMessage);
+
+    // Probe Task init event listeners
+    trcrtInit.addEventListener("click", sendTraceTask);
+    iperfInit.addEventListener("click", sendIperfTask);
+    scanInit.addEventListener("click", sendScanTask);
+    pcapInit.addEventListener("click", sendPcapTask);
+
     chatInput.addEventListener("keypress", e => {
       if (e.key === "Enter") sendMessage();
     });

@@ -50,12 +50,33 @@ util_obj=Util()
 api_name = 'umj-api-wflw'
 auth_ping_counter = {}
 mntr_url=os.environ.get('SERVER_NAME')
-REQUIRED_OUT_OF_SCOPE_MSG = "Please provide a question or request related to network administration or the available MCP tools."
 email_sender_handler = EmailSenderHandler(brevo_api_key=os.environ.get('BREVO_API_KEY'))
 cli = OneTimeSecretCli(os.environ.get('OTS_USER'), os.environ.get('OTS_KEY'), os.environ.get('REGION'))
 auth_attempts={}
 max_auth_attempts=int(os.environ.get('MAX_AUTH_ATTEMPTS'))
 connected_probes={}
+
+# LLM System prompts
+REQUIRED_OUT_OF_SCOPE_MSG = "Please provide a question or request related to network administration or the available MCP tools."
+NET_ADMIN_INSTRUCTIONS = (
+                            "You are a Network Admin assistant with knowledge of "
+                            "network engineering, network administration, firewall configurations, and securing networks according to "
+                            "NIST, PCI DSS, GDPR, HIPAA and SOC 2 compliance standards. "
+                            "You have access to MCP servers with tools that execute common network administration functions. "
+                            "Always use the provided tools when applicable.\n"
+                            "IMPORTANT: Only answer questions that are related to the tools below or your network administration expertise. "
+                            "If a user asks something unrelated to the provided tools or prompt, DO NOT answer the question. "
+                            f"Instead, only reply with: '{REQUIRED_OUT_OF_SCOPE_MSG}.'. Do not give any other type of reply.\n"
+                            "If you are asked about your architecture, provider, or model identity, only respond with: "
+                            "'I am a proprietary language model trained and developed by Baugh Consulting & Lab L.L.C.'\n"
+                        )                    
+SUMMARY_INSTRUCTIONS = (
+                                "You are a Network Admin assistant with knowledge of "
+                                "network engineering, network administration, firewall configurations, and securing networks according to"
+                                "NIST, PCI DSS, GDPR, HIPAA and SOC 2 compliance standards."
+                                "Your only task is to analyze the outputs of traceroutes, iperf speedtests, nmap network scans, SNMP statistics and network packet captures. You will use this analysis to troubleshoot network performance issues, diagnose network outages, identify anomalies within current and historical network data and provide suggestions for network performance improvements."
+                            )
+
 
 # Helper functions to quantize datetimes to 5-minute increments
 def round_down_to_5min(dt: datetime) -> datetime:
@@ -139,7 +160,6 @@ async def _receive() -> None:
         if action:
             match action:
                 case 'llm':
-                
                     usr_msg_data = {
                         "from": message["from"],
                         "msg": message["msg"],
@@ -152,27 +172,6 @@ async def _receive() -> None:
                     await cl_data_db.connect_db()
                     
                     if await cl_auth_db.get_all_data(match=f'*uid:{message["usr"]}*', cnfrm=True) is True:
-
-                        # NETWORK ADMIN PROMPT
-                        INSTRUCTIONS = (
-                            "You are a Network Admin assistant with knowledge of "
-                            "network engineering, network administration, firewall configurations, and securing networks according to "
-                            "NIST, PCI DSS, GDPR, HIPAA and SOC 2 compliance standards. "
-                            "You have access to MCP servers with tools that execute common network administration functions. "
-                            "Always use the provided tools when applicable.\n"
-                            "IMPORTANT: Only answer questions that are related to the tools below or your network administration expertise. "
-                            "If a user asks something unrelated to the provided tools or prompt, DO NOT answer the question. "
-                            f"Instead, only reply with: '{REQUIRED_OUT_OF_SCOPE_MSG}.'. Do not give any other type of reply.\n"
-                            "If you are asked about your architecture, provider, or model identity, only respond with: "
-                            "'I am a proprietary language model trained and developed by Baugh Consulting & Lab L.L.C.'\n"
-                        )
-                        
-                        SUMMARY_INSTRUCTIONS = (
-                                "You are a Network Admin assistant with knowledge of "
-                                "network engineering, network administration, firewall configurations, and securing networks according to"
-                                "NIST, PCI DSS, GDPR, HIPAA and SOC 2 compliance standards."
-                                "Your only task is to analyze the outputs of traceroutes, iperf speedtests, nmap network scans, SNMP statistics and network packet captures. You will use this analysis to troubleshoot network performance issues, diagnose network outages, identify anomalies within current and historical network data and provide suggestions for network performance improvements."
-                            )
                         
                         probes = await cl_data_db.get_all_data(match=f"prb:{message['usr']}*")
 
@@ -211,7 +210,7 @@ async def _receive() -> None:
                                         },
                                     ],
                                 'usr_input':f"{tool_request}",
-                                'instructions': INSTRUCTIONS,
+                                'instructions': NET_ADMIN_INSTRUCTIONS,
                                 'api_key': api,
                                 'user': message['usr'],
                             }
@@ -357,38 +356,47 @@ async def _receive() -> None:
                     else:
                         pass
 
-                case 'prb_act':
-                    logger.info(f"Received probe action message: {message}")
+                case 'prb_task_init':
+                    logger.info(f"Received probe action message: {message}.")
 
-                    prb_act_msg_data = {
-                        "prb_id": message['prb_id'],
-                        "act": message['act_func'],
-                        "prms": {
-                            "destination": "8.8.8.8",
-                            "max_hops": 30
-                        }
-                    }
-
-                    await probe_broker.publish(message=json.dumps(prb_act_msg_data))
+                    if connected_probes.get(message["prb_id"]):
+                        await connected_probes.get(message["prb_id"]).get("broker").publish(message=json.dumps(message))
 
                 case "prb_task_rslt":
-                    match message['act_rslt_type']:
-                        case 'pcap_lcl':
-                            data = message['act_rslt']  
-                        case 'pcap_tux':
-                            data = message['act_rslt']  
+                    if message['llm'] == 'y':
+                        logger.info(f"Received probe LLM analysis result message: {message}.")
 
+                        llm_request = f"Analyze the following network test result and provide insights, potential issues, and recommendations based on the data:\n\n{message['act_rslt']}"
+
+                        smmry_payload = {
+                                        'model': os.environ.get('OLLAMA_MODEL'),
+                                        'usr_input':f"{llm_request}",
+                                        'instructions': SUMMARY_INSTRUCTIONS,
+                                        'url': message['url'],
+                                        'api_key': api,
+                                        'user': message['usr'],
+                                    }
+
+                        smmry_resp = await client.post(f"{os.environ.get('OLLAMA_PROXY_URL')}/analysis", json=smmry_payload, headers=headers, timeout=int(os.environ.get('REQUEST_TIMEOUT')))
+                        logger.info(smmry_resp)
+                        logger.info(smmry_resp.json())
+                        summary_msg = smmry_resp.json()
+
+                        analysis_msg = {
+                            'site': message['site'],
+                            'alrt_type': 'llm_analysis',
+                            'prb_id': message['prb_id'],
+                            'act_rslt_type': message['act_rslt_type'],
+                            'llm_result': summary_msg['output_text']
+                            }
+
+                    await broker.publish(message=json.dumps(analysis_msg))
                 case _:
                     pass
         else:
             pass
 
 async def session_watchdog(sess_id: str, check_interval: float = 5.0):
-    """
-    Background monitor for a given session id. If auth_ping_counter shows expiry older than now,
-    call logout endpoint and close the websocket.
-    check_interval controls how often we poll the expiry (seconds).
-    """
     logger.info(f"Starting session watchdog for {sess_id}")
     while True:
         try:
@@ -496,19 +504,11 @@ async def check_ip_ws():
         except RuntimeError:
             return None
         
-@app.websocket("/heartbeat")
+@app.websocket("/heartbeat/<string:probe_id>")
 @rate_exempt
-async def heartbeat():
+async def heartbeat(probe_id):
     try:
-        probe_id = None
         monitor_task = None
-
-        if websocket.args.get('prb_id') is None:
-            await ip_blocker(conn_obj=websocket, auto_ban=True)
-            await websocket.close()
-        
-        probe_id = websocket.args.get('prb_id')
-
         await cl_data_db.connect_db()  
 
         if await cl_data_db.get_all_data(match=f"*{probe_id}*", cnfrm=True) is False:
@@ -520,11 +520,11 @@ async def heartbeat():
             connected_probes[probe_id] = {'conn_start': now,
                                         'id': probe_id,
                                         "exp": round_up_to_30sec(now + timedelta(seconds=30)),
+                                        "broker" : Broker(),
                                         }
             logger.debug(f"Initialized ping expiry for session {probe_id} -> {connected_probes[probe_id]['exp']}")
 
             asyncio.ensure_future(_receive())
-
             monitor_task = asyncio.create_task(session_watchdog(sess_id=probe_id))
 
         if probe_id and (probe_id in connected_probes):
@@ -534,7 +534,7 @@ async def heartbeat():
         await websocket.accept()
 
         try:
-            async for message in probe_broker.subscribe():
+            async for message in  connected_probes[probe_id]['broker'].subscribe():
                 await websocket.send(message)
         except asyncio.CancelledError:
         # Connection was closed, exit loop to cleanup normally
