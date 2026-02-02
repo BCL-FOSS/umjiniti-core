@@ -109,28 +109,22 @@
                 </div>
                 <div class="form-floating mb-3">
                   <label class="form-label">Target</label>
-                  <span class="input-group-text" id="trcrt-addon1">@</span>
-                  <input type="text" class="form-control" placeholder="Target" aria-label="traceroute-target" aria-describedby="trcrt-addon1" id="trcrt-target">
+                  <input type="text" class="form-control" placeholder="Target" id="trcrt-target">
                 </div>
                 <div class="form-floating mb-3">
                   <label class="form-label">Options</label>
-                  <div class="input-group">
-                    <span class="input-group-text" id="trcrt-addon3">>_</span>
-                    <input type="text" class="form-control" id="trcrt-options" aria-describedby="trcrt-addon3 trcrt-addon4">
-                    <div class="form-text" id="trcrt-addon4">traceroute/dnstraceroute command options (optional)</div>
-                  </div>
+                  <input type="text" class="form-control" id="trcrt-options">
+                  <div class="form-text">traceroute/dnstraceroute command options (optional)</div>
                 </div>
                 <div class="form-floating mb-3">
                   <label class="form-label">DNS Server</label>
-                  <span class="input-group-text" id="trcrt-addon1">@</span>
-                  <input type="text" class="form-control" placeholder="DNS server to test" aria-label="trcrt-dns-test-server" aria-describedby="trcrt-addon1" id="trcrt-dns-test-server">
-                  <div class="form-text" id="trcrt-addon4">For dnstraceroute only. Defaults to 8.8.8.8 (optional)</div>
+                  <input type="text" class="form-control" placeholder="DNS server to test" id="trcrt-dns-test-server">
+                  <div class="form-text">For dnstraceroute only. Defaults to 8.8.8.8 (optional)</div>
                 </div>
                 <div class="form-floating mb-3">
                   <label class="form-label">Packet Length</label>
-                  <span class="input-group-text" id="trcrt-addon1">@</span>
-                  <input type="text" class="form-control" placeholder="Enter preferred packet length" aria-label="trcrt-packetlen" aria-describedby="trcrt-addon1" id="trcrt-packetlen">
-                  <div class="form-text" id="trcrt-addon4">For traceroute only (optional)</div>
+                  <input type="text" class="form-control" placeholder="Enter preferred packet length" id="trcrt-packetlen">
+                  <div class="form-text">For traceroute only (optional)</div>
                 </div>
                 <div class="d-grid">
                   <button type="button" class="btn btn-dark mb-0" id="trcrt-init">Start Traceroute</button>
@@ -142,24 +136,21 @@
             <div id="spdtst-tab-content">
               <form method="POST">
                 <div class="form-floating mb-3">
-                  <label class="form-label">Mode</label>
-                  <select id="spdtst-dropdown" class="form-select" aria-label="Performance Test Mode">
+                  <label class="form-label">Endpoint Type</label>
+                  <select id="spdtst-dropdown" class="form-select">
                     <option value="spdtst_srvr">Server Mode</option>
                     <option value="spdtst_clnt">Client Mode</option>
                   </select>
                 </div>
                 <div class="form-floating mb-3">
                   <label class="form-label">Options</label>
-                  <div class="input-group">
-                    <span class="input-group-text" id="spdtst-addon3">>_</span>
-                    <input type="text" class="form-control" id="spdtst-options" aria-describedby="spdtst-addon3 spdtst-addon4">
-                    <div class="form-text" id="spdtst-addon4">iperf command options (optional)</div>
-                  </div>
+                  <input type="text" class="form-control" id="spdtst-options">
+                  <div class="form-text">iperf command options (optional)</div>
                 </div>
                 <div class="form-floating mb-3">
                   <label class="form-label">Server Endpoint</label>
-                  <input type="text" class="form-control" id="spdtst-clnt-options" aria-describedby="spdtst-addon3 spdtst-addon4">
-                  <div class="form-text" id="spdtst-addon4">NOTICE: For probes set in Client mode only</div>
+                  <input type="text" class="form-control" id="spdtst-clnt-options">
+                  <div class="form-text">NOTICE: For probes set in Client mode only</div>
                 </div>
                 <div class="d-grid">
                   <button type="button" class="btn btn-dark mb-0" id="iperf-init">Start Perfomance Test</button>
@@ -170,9 +161,7 @@
           <div class="tab-pane fade" id="scan-tab-pane" role="tabpanel" aria-labelledby="scan-tab" tabindex="0">
             <div id="scan-tab-content">
               <form method="POST">
-                <div class="form-floating mb-3">
-                  <label class="form-label" id="scan-ifaces">Scan Interfaces</label>
-                </div>
+                <label id="scan-ifaces">Scan Interfaces</label>
                 <div class="form-floating mb-3">
                   <label class="form-label">Scan Type</label>
                   <select class="form-select" aria-label="Scan Mode" id="scan-dropdown">
@@ -186,19 +175,16 @@
                   </select>
                 </div>
                 <div class="form-floating mb-3">
-                  <label class="form-label">Target Subnet / IP/Host</label>
-                  <span class="input-group-text" id="scan-addon1">@</span>
-                  <input type="text" class="form-control" placeholder="Target subnet or IP/host" aria-label="scan-target" aria-describedby="scan-addon1" id="scan-target">
+                  <label class="form-label">Target Subnet/IP</label>
+                  <input type="text" class="form-control" id="scan-target">
                 </div>
                 <div class="form-floating mb-3">
                   <label class="form-label">Scan Interface</label>
-                  <span class="input-group-text" id="scan-addon1">@</span>
-                  <input type="text" class="form-control" placeholder="Scan interface" aria-label="scan-interface" aria-describedby="scan-addon1" id="scan-interface">
+                  <input type="text" class="form-control" id="scan-interface">
                 </div>
                 <div class="form-floating mb-3">
                   <label class="form-label">nmap Command Options</label>
-                  <span class="input-group-text" id="scan-addon3">>_</span>
-                  <input type="text" class="form-control" id="scan-options" aria-describedby="scan-addon3 scan-addon4">
+                  <input type="text" class="form-control" id="scan-options" >
                   <div class="form-text" id="scan-addon4">Options for the nmap command</div>
                 </div>
                 <div class="d-grid">
@@ -223,18 +209,15 @@
                 </div>
                 <div class="form-floating mb-3">
                   <label class="form-label">Capture Interface</label>
-                  <span class="input-group-text" id="pcap-addon1">@</span>
-                  <input type="text" class="form-control" placeholder="Capture Interface" aria-label="pcap-interface" aria-describedby="pcap-addon1" id="pcap-interface">
+                  <input type="text" class="form-control" placeholder="Capture Interface" id="pcap-interface">
                 </div>
                 <div class="form-floating mb-3">
                   <label class="form-label">Capture Count (Linux & Local only)</label>
-                  <span class="input-group-text" id="pcap-addon1">@</span>
-                  <input type="text" class="form-control" placeholder="The number of packets to capture" aria-label="pcap-count-target" aria-describedby="pcap-addon1" id="pcap-count-target">
+                  <input type="text" class="form-control" placeholder="The number of packets to capture" id="pcap-count-target">
                 </div>
                 <div class="form-floating mb-3">
                   <label class="form-label">Capture Duration (Windows only)</label>
-                  <span class="input-group-text" id="pcap-addon1">@</span>
-                  <input type="text" class="form-control" placeholder="Capture duration in seconds" aria-label="pcap-duration-target" aria-describedby="pcap-addon1" id="pcap-duration-target">
+                  <input type="text" class="form-control" placeholder="Capture duration in seconds" id="pcap-duration-target">
                 </div>
                 <div class="d-grid">
                   <button type="button" class="btn btn-dark mb-0" id="pcap-init">Start Packet Capture</button>
@@ -262,9 +245,11 @@
                 </div>
               </div>
             </div>
+          </div>
+          <div class="form-floating mb-3">
+            <label class="form-label bold">Task Run Schedule</label>
             <div class="row mb-3">
-                <label class="form-label">Task Run Schedule</label>
-                <div class="col-4">
+                <div class="col-12">
                   <select class="form-select" id="task-days" data-placeholder="Choose day to run task." multiple>
                       <option value="0">Sunday</option>
                       <option value="1">Monday</option>
@@ -276,7 +261,9 @@
                   </select>
                   <div class="form-text">To run every Sunday, Wednesday and Saturday enter as such: 0,3,6.</div>
                 </div>
-                <div class="col-4">
+            </div>
+            <div class="row mb-3">
+              <div class="col-12">
                   <select class="form-select" id="task-minutes" data-placeholder="Choose minute to run task." multiple>
                       <option>0</option>
                       <option>5</option>
@@ -294,7 +281,9 @@
                   <div class="form-text">For specific intervals, enter start,end,interval (e.g., 5,50,5). The task would run every 5 minutes from 5 to 50. </div> 
                   <div class="form-text">For a range, enter start,end (e.g., 35,45). The task would run during minutes 35 to 45 only. </div> 
                 </div>
-                <div class="col-4">
+            </div>
+            <div class="row mb-3">
+              <div class="col-12">
                   <select class="form-select" id="task-dom" data-placeholder="Choose day of month to run task." multiple>
                       <option>1</option>
                       <option>2</option>
@@ -330,7 +319,9 @@
                   </select>
                   <div class="form-text">For specific intervals, enter start,end,interval (e.g., 1,31,1). The task would run every day from 1 to 31. </div> 
                 </div>
-                <div class="col-4">
+            </div>
+            <div class="row mb-3">
+              <div class="col-12">
                   <select class="form-select" id="task-months" data-placeholder="Choose month to run task." multiple>
                       <option value="1">January</option>
                       <option value="2">February</option>
@@ -347,7 +338,9 @@
                   </select>
                   <div class="form-text">For specific intervals, enter start,end,interval (e.g., 1,12,1). The task would run every month from January to December. </div> 
                 </div>
-                <div class="col-4">
+            </div>
+            <div class="row mb-3">
+              <div class="col-12">
                   <select class="form-select" id="task-hours" data-placeholder="Choose hour to run task." multiple>
                       <option>0</option>
                       <option>1</option>
