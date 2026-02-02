@@ -361,6 +361,15 @@ async def _receive() -> None:
 
                     if connected_probes.get(message["prb_id"]):
                         await connected_probes.get(message["prb_id"]).get("broker").publish(message=json.dumps(message))
+                    else:
+                        probe_conn_error = {
+                            'alert_type': 'probe_connection_error',
+                            'site': message['site'],
+                            'name': message['name'],
+                            'msg': f"Probe with ID {message['prb_id']} is not connected. Verify network connectivity at the site or resource the probe is located at. Unable to deliver task.",
+                            'timestamp': datetime.now(tz=timezone.utc)
+                        }
+                        await broker.publish(message=json.dumps(probe_conn_error))
 
                 case "prb_task_rslt":
                     final_output = ""
@@ -469,10 +478,10 @@ async def session_watchdog(sess_id: str, check_interval: float = 5.0):
                     probe_data = await cl_data_db.get_all_data(match=f"*{sess_id}*")
                     probe_data_dict = next(iter(probe_data.values()))
 
-                    probe_outage_data = {'alert_type': 'outage',
+                    probe_outage_data = {'alert_type': 'probe_outage',
                                             'site': probe_data_dict.get('site'),
                                             'name': probe_data_dict.get('name'),
-                                            'url': probe_data_dict.get('url'),
+                                            'msg': f'Probe {probe_data_dict.get("name")} (ID: {sess_id}) is offline or a network outage has occurred at the site or resource the probe is located at.',
                                             'timestamp': datetime.now(tz=timezone.utc)}
 
                     await broker.publish(message=json.dumps(probe_outage_data))
