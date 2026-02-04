@@ -28,6 +28,7 @@ services:
       - BREVO_API_KEY=${BREVO_API_KEY}
       - BREVO_SENDER_EMAIL=${BREVO_SENDER_EMAIL}
       - OLLAMA_MODEL=${OLLAMA_MODEL}
+      - MAX_CONTACTS_PER_TYPE=${MAX_CONTACTS_PER_TYPE}
     volumes:
       - socket_data:/home/quart/instance/apps
     

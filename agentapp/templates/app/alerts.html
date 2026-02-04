@@ -19,40 +19,25 @@
               <thead>
                 <tr>
                   <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Status</th>
-                  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Name</th>
-                  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">URL</th>
+                  <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Name</th>
+                  <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">URL</th>
                   <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Site</th>
                   <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Action</th>
+                  <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">ID</th>
                 </tr>
               </thead>
               <tbody>
                 {% for probe in all_probes.values() %}
                 <tr>
                   <td class="align-middle text-center text-sm">
-                    <span class="badge badge-sm badge-{{ probe.badge|lower }}">{{ probe.status }}</span>
+                    <span class="badge badge-sm bg-gradient-success">Online</span>
                   </td>
-                  <td>
-                    <div class="d-flex px-2 py-1">
-                      <div>
-                        <img src="{{ url_for('static', filename='img/bcl/probe.svg') }}" class="avatar avatar-sm me-3"/>
-                      </div>
-                      <div class="d-flex flex-column justify-content-center">
-                        <h6 class="mb-0 text-xs">{{ probe.name }}</h6>
-                        <p class="text-xs text-secondary mb-0">Installed by: {{ probe.assigned_user }}</p>
-                      </div>
-                    </div>
-                  </td>
+                  <td class="align-middle text-center text-sm">{{ probe.name }}</td>
+                  <td class="align-middle text-center text-sm">{{ probe.url }}</td>
+                  <td class="align-middle text-center text-sm">{{ probe.site }}</td>
                   <td>
                     <div class="input-group mb-3">
-                      <a href="{{ probe.url }}/docs" target="_blank" class="btn btn-outline-primary">View Probe UI</a>
-                    </div>
-                  </td>
-                  <td class="align-middle text-center">
-                    <span class="text-secondary text-xs font-weight-bold">{{ probe.site }}</span>
-                  </td>
-                  <td>
-                    <div class="input-group mb-3">
-                      <button type="button" class="btn btn-sm btn-info ms-2 probe-automation-btn"
+                      <button type="button" class="btn btn-sm btn-info ms-2 probe-details-btn"
                           data-name="{{ probe.name|e }}"
                           data-url="{{ probe.url|e }}"
                           data-site="{{ probe.site|e }}"
@@ -60,97 +45,29 @@
                           data-ifaces="{{ probe.iface_list|e }}">
                         Automation Manager
                       </button>
-                      <button class="btn btn-sm btn-outline-secondary ms-2 probe-netvis-btn"
-                          data-name="{{ probe.name|e }}"
-                          data-url="{{ probe.url|e }}"
-                          data-site="{{ probe.site|e }}"
-                          data-id="{{ probe.prb_id|e }}">
-                        Network Visualizer
-                      </button>
-                      <button class="btn btn-sm btn-outline-danger ms-2 probe-delete-btn"
-                          data-name="{{ probe.name|e }}"
-                          data-url="{{ probe.url|e }}"
-                          data-site="{{ probe.site|e }}"
-                          data-id="{{ probe.prb_id|e }}">
-                        Delete
-                      </button>
+                      <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">Settings</button>
+                      <ul class="dropdown-menu">
+                        <li>
+                          <button class="btn dropdown-item" data-action="ping">
+                            Ping
+                          </button>
+                        </li>
+                        <li>
+                          <button class="btn dropdown-item" data-action="delete">
+                            Delete
+                          </button>
+                        </li>
+                      </ul> 
                     </div>
                   </td>
+                  <td class="align-middle text-center text-sm">{{ probe.db_id }}</td>
                 </tr>
                 {% endfor %}
+                
               </tbody>
             </table>
           </div>
         </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<div class="modal fade" id="probeNetVisModal" tabindex="-1" aria-labelledby="probeNetVisModalLabel" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="probeNetVisModalLabel">Network Visualizer</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <div class="container-fluid py-4">
-          <div class="row mb-4">
-            <div class="col-12 mt-4 mt-lg-0">
-              <div class="card shadow h-100">
-                <div class="card-header pb-0 p-3">
-                  <h6 class="mb-0">Network Map</h6>
-                </div>
-                <div class="card-body pb-0 p-3">
-                  <div id="controls">
-                    <div id="alerts"></div>
-                  </div>
-                  
-                  <div id="network"></div>
-                  
-                  <!-- Modal for Node Info -->
-                  <div id="modal" class="modal">
-                    <div class="modal-content">
-                      <span id="modal-close">&times;</span>
-                      <div id="modal-body"></div>
-                    </div>
-                  </div>
-                </div>
-                <div class="card-footer pt-0 p-3 d-flex align-items-center">
-                  <div class="w-60">
-                    <p class="text-sm">
-                    </p>
-                  </div>
-                  <div class="w-40 text-end">
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-        <button type="button" class="btn btn-primary" onclick="rescan()">🔄 Rescan Network</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<div class="modal fade" id="probeDeleteModal" tabindex="-1" aria-labelledby="probeDeleteModalLabel" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="probeDeleteModalLabel">Modal title</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        Are you sure you want to delete this probe?
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-        <button type="button" class="btn btn-danger" id="delete-probe">Delete</button>
       </div>
     </div>
   </div>
@@ -368,169 +285,11 @@
           </div>
           <div class="d-grid">
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-          </div>
         </form>
       </div>
     </div>
   </div>
 </div>
-
-
-<script type="text/javascript">
-
-  const icons = {
-    firewall: "🛡️",
-    switch: "🔀",
-    server: "🖥️",
-    endpoint: "💻",
-    unknown: "❓"
-  };
-  
-  let nodes = new vis.DataSet([]);
-  let edges = [];
-  let network = null;
-  let existingNodes = new Set();
-  
-  async function loadNetwork(discovery_results) {
-    const devices = discovery_results;
-    const newNodes = [];
-
-    nodes.clear();
-    edges = [];
-
-    for (let key in devices) {
-        const dev = devices[key];
-        if (!existingNodes.has(dev.mac)) {
-            newNodes.push(dev.mac);
-        }
-        nodes.add({
-            id: dev.mac,
-            label: icons[dev.role] + " " + dev.vendor + "\n" + dev.ip,
-            title: "MAC: " + dev.mac + "\nPorts: " + dev.open_ports,
-            group: dev.role
-        });
-        existingNodes.add(dev.mac);
-    }
-
-    const macs = Object.values(devices).map(dev => dev.mac);
-    for (let i = 0; i < macs.length; i++) {
-        for (let j = 0; j < macs.length; j++) {
-            if (i != j) {
-                const dev1 = devices[Object.keys(devices)[i]];
-                const dev2 = devices[Object.keys(devices)[j]];
-
-                if (dev1.role == 'firewall' && dev2.role == 'switch') {
-                    edges.push({ from: dev1.mac, to: dev2.mac, width: 3 });
-                }
-                if (dev1.role == 'switch' && ['switch', 'server', 'endpoint'].includes(dev2.role)) {
-                    edges.push({ from: dev1.mac, to: dev2.mac, dashes: dev2.role != 'switch' });
-                }
-            }
-        }
-    }
-
-    const data = { nodes: nodes, edges: edges };
-    const options = {
-        groups: {
-            firewall: { color: { background: "#ff6961" }},
-            switch: { color: { background: "#77dd77" }},
-            server: { color: { background: "#779ecb" }},
-            endpoint: { color: { background: "#fdfd96" }},
-            unknown: { color: { background: "#d3d3d3" }}
-        },
-        edges: { arrows: { to: { enabled: true } } },
-        physics: { hierarchicalRepulsion: { nodeDistance: 150 }, solver: "hierarchicalRepulsion" },
-        layout: { hierarchical: { direction: "UD", sortMethod: "directed" } }
-    };
-
-    network = new vis.Network(document.getElementById('network'), data, options);
-
-    // Highlight new nodes
-    newNodes.forEach(mac => {
-        const nodeDom = network.body.nodes[mac]?.shapeNode;
-        if (nodeDom) {
-            nodeDom.style.animation = "glow 1s infinite";
-            setTimeout(() => {
-                nodeDom.style.animation = "";
-            }, 5000);
-        }
-    });
-
-    // Node click handler -> Modal
-    network.on("click", async function (params) {
-        if (params.nodes.length > 0) {
-            const nodeId = params.nodes[0];
-            const node = nodes.get(nodeId);
-            const ip = node.label.split('\n')[1];
-            const infoRes = await axios.get('/api/snmp/' + ip);
-            showModal(ip, infoRes.data);
-        }
-    });
-
-    detectAlerts();
-  }
-
-  function rescan() {
-    loadNetwork();
-  }
-  
-  function detectAlerts() {
-    const alertsDiv = document.getElementById('alerts');
-    let alertMsg = "";
-  
-    const uplinks = nodes.get().filter(n => n.group == 'switch' || n.group == 'firewall').length;
-    if (uplinks < 2) {
-      alertMsg += "⚠️ Possible missing uplinks detected!<br>";
-    }
-  
-    const orphans = nodes.get().filter(n => {
-      return edges.filter(e => e.from == n.id || e.to == n.id).length == 0;
-    });
-  
-    if (orphans.length > 0) {
-      alertMsg += "⚠️ Orphaned devices found:<br>";
-      orphans.forEach(o => {
-        alertMsg += "- " + o.label + "<br>";
-      });
-    }
-  
-    if (alertMsg) {
-      alertsDiv.innerHTML = `<div class="alert">${alertMsg}</div>`;
-    } else {
-      alertsDiv.innerHTML = "";
-    }
-  }
-  
-  // Modal logic
-  function showModal(ip, stats) {
-    const modal = document.getElementById('modal');
-    const modalBody = document.getElementById('modal-body');
-    modalBody.innerHTML = `<h2>SNMP Info for ${ip}</h2><ul>`;
-  
-    for (const [k, v] of Object.entries(stats)) {
-      modalBody.innerHTML += `<li><b>${k}</b>: ${v}</li>`;
-    }
-  
-    modalBody.innerHTML += `</ul>`;
-    modal.style.display = "block";
-  }
-  
-  document.getElementById('modal-close').onclick = function() {
-    document.getElementById('modal').style.display = "none";
-  };
-  
-  window.onclick = function(event) {
-    if (event.target == document.getElementById('modal')) {
-      document.getElementById('modal').style.display = "none";
-    }
-  };
-  
-  // Initial load
-  const discovery_results = "{{ discovery_results | tojson }}";
-  if (discovery_results) {
-    loadNetwork(discovery_results);
-  }
-</script>
 
 <script type="text/javascript">
 document.addEventListener("DOMContentLoaded", () => {
@@ -550,31 +309,82 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
+  // Handle probe actions
+  table.addEventListener("click", async (event) => {
+    const button = event.target.closest(".dropdown-item");
+    if (!button) return;
+
+    event.preventDefault();
+
+    const selectedRow = button.closest("tr");
+    if (!selectedRow) {
+      alert("Please select a valid row before proceeding!");
+      return;
+    }
+
+    const cells = selectedRow.querySelectorAll("td");
+    const rowData = {
+      name: cells[1]?.textContent.trim() || "",
+      url: cells[2]?.textContent.trim() || "",
+      site: cells[3]?.textContent.trim() || "",
+      id: cells[5]?.textContent.trim() || "",
+    };
+
+    alert(`Row Data:\nID: ${rowData.id}\nName: ${rowData.name}\nURL: ${rowData.url}\nSite: ${rowData.site}`);
+
+    const action = button.dataset.action;
+    const endpoints = {
+      ping: `${rowData.url}/api/status`,
+      delete: `https://${mntrURL}/delete?usr={{ cur_usr }}`
+    };
+
+    const endpoint = endpoints[action];
+    if (!endpoint) {
+      alert("Invalid action selected!");
+      return;
+    }
+
+    try {
+      if (action === "ping") {
+        const resp = await fetch(endpoint, { method: "GET" });
+        if (resp.ok) {
+          console.log("Ping successful");
+        } else {
+          console.error("Ping failed");
+        }
+      }
+
+      if (action === "delete") {
+        const probeDeleteConfirmation = confirm(`Are you sure you want to delete probe ${rowData.name}?`);
+
+        if (probeDeleteConfirmation) {
+          const payload = { id: rowData.id };
+          //const resp = await fetch(endpoint, {method: "POST", headers: {"Content-Type": "application/json", "X-ACCESS-TOKEN": "{{ jwt_token }}"}, body: JSON.stringify(payload)});
+          const resp = await fetch(endpoint, {method: "POST", credentials:"same-origin", headers: {"Content-Type": "application/json"}, body: JSON.stringify(payload)});
+          if (resp.ok) {
+            alert("Probe deletion successful");
+          } else {
+            alert("Probe deletion failed");
+          }
+        } else {
+          console.log("User clicked Cancel (No).");
+          // Perform actions for "No"
+        } 
+      }
+    } catch (err) {
+      console.error("Error executing action:", err);
+    }
+  });
+
   // Details button handler: open modal and populate tabs
-  const probeAutomationButtons = document.querySelectorAll(".probe-automation-btn");
-  const probeNetVisButtons = document.querySelectorAll(".probe-netvis-btn");
-  const probeDeleteButtons = document.querySelectorAll(".probe-delete-btn");
-  const deleteProbeButton = document.getElementById('delete-probe');
-
-  const netVisModalEl = document.getElementById('probeNetVisModal');
-  let netVisBsModal = null;
-  if (netVisModalEl) {
-    netVisBsModal = new bootstrap.Modal(netVisModalEl, {});
-  }
-
-  const deleteModalEl = document.getElementById('probeDeleteModal');
-  let deleteBsModal = null;
-  if (deleteModalEl) {
-    deleteBsModal = new bootstrap.Modal(deleteModalEl, {});
-  }
-
+  const detailsButtons = document.querySelectorAll(".probe-details-btn");
   const modalEl = document.getElementById('probeTaskConfigModal');
   let bsModal = null;
   if (modalEl) {
     bsModal = new bootstrap.Modal(modalEl, {});
   }
 
-  probeAutomationButtons.forEach(btn => {
+  detailsButtons.forEach(btn => {
     btn.addEventListener("click", (e) => {
       e.stopPropagation(); // prevent row click selection (if undesired)
       const name = btn.dataset.name || '';
@@ -602,74 +412,6 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
   });
-
-  probeNetVisButtons.forEach(btn => {
-    btn.addEventListener("click", (e) => {
-      e.stopPropagation(); // prevent row click selection (if undesired)
-      const name = btn.dataset.name || '';
-      const url = btn.dataset.url || '';
-      const site = btn.dataset.site || '';
-      const id = btn.dataset.id || '';
-
-      // Fill modal fields
-      document.getElementById('probeNetVisModalLabel').textContent = `${name} Network Visualizer`;
-      // Additional setup can be done here
-
-      
-      if (netVisBsModal) {
-        netVisBsModal.show();
-      } else {
-        console.warn("Bootstrap Modal not available - cannot show network visualizer modal.");
-      }
-    });
-  });
-
-  probeDeleteButtons.forEach(btn => {
-    btn.addEventListener("click", (e) => {
-      e.stopPropagation(); // prevent row click selection (if undesired)
-      const name = btn.dataset.name || '';
-      const url = btn.dataset.url || '';
-      const site = btn.dataset.site || '';
-      const id = btn.dataset.id || '';
-
-      // Fill modal fields
-      document.getElementById('probeDeleteModalLabel').textContent = `Delete Probe: ${name}`;
-      deleteProbeButton.dataset.id = id;
-
-      if (deleteBsModal) {
-        deleteBsModal.show();
-      } else {
-        console.warn("Bootstrap Modal not available - cannot show delete modal.");
-      }
-    });
-  });
-
-  deleteProbeButton.addEventListener("click", async (e) => {
-    const probeId = deleteProbeButton.dataset.id;
-    if (!probeId) {
-      alert("Probe ID not found!");
-      return;
-    }
-
-    const endpoint = `https://${mntrURL}/delete?usr={{ cur_usr }}`;
-    const payload = { id: probeId };
-
-    try {
-      //const resp = await fetch(endpoint, {method: "POST", headers: {"Content-Type": "application/json", "X-ACCESS-TOKEN": "{{ jwt_token }}"}, body: JSON.stringify(payload)});
-      const resp = await fetch(endpoint, {method: "POST", credentials:"same-origin", headers: {"Content-Type": "application/json"}, body: JSON.stringify(payload)});
-      if (resp.ok) {
-        alert("Probe deletion successful");
-        if (deleteBsModal) {
-          deleteBsModal.hide();
-        }
-      } else {
-        alert("Probe deletion failed");
-      }
-    } catch (err) {
-      console.error("Error deleting probe:", err);
-    }
-  });
 });
 </script>
-
 {% endblock %}

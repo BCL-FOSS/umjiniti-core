@@ -184,6 +184,7 @@ async def login():
             # Add JWT data to user session profile for upload to session redis db
             sub_dict["usr_rand"] = usr_rand
             sub_dict["usr_jwt_secret"] = usr_jwt_secret
+            sub_dict['show_alerts'] = 'y'
             logger.info(sub_dict)
 
             # Generate user JWT to authenticate socket connection
@@ -431,8 +432,6 @@ async def settings(cmp_id, obsc):
     await cl_data_db.connect_db()
 
     session["csrf_ready"] = True
-    jira_alert_form = await AlertJiraForm.create_form()
-    slack_alert_form = await AlertSlackForm.create_form()
 
     # Retrieve user session data
     cl_sess_data = await cl_sess_db.get_all_data(match=f"{cur_usr_id}")
@@ -453,49 +452,8 @@ async def settings(cmp_id, obsc):
 
     # URL for agent websocket connection initialization
     ws_url = f"wss://{mntr_url}/ws?id={cur_usr_id}&unm={cl_sess_data_dict.get('unm')}"
-      
-    if await jira_alert_form.validate_on_submit():
-        count_id = util_obj.key_gen(size=5)
-        
-        jira_alert_id = f"alrt:jira:{count_id}:{jira_alert_form.email.data}"
-
-        jira_alert_data = {'type': 'jira',
-                           'name': jira_alert_form.email.data,
-                            'cloud_id': jira_alert_form.cloud_id.data,
-                           'eml': jira_alert_form.email.data,
-                           'token': jira_alert_form.auth_token.data,
-                           'id': jira_alert_id,
-                           'count': count_id
-                        }
-        
-        if await cl_data_db.upload_db_data(id=jira_alert_id, data=jira_alert_data) is None:
-            await flash(message=f"Alert contact creation failed...")
-            return redirect(url_for('settings', cmp_id=cmp_id, obsc=obsc))
-        
-        await flash(message=f"Alert contact {jira_alert_form.email.data} uploaded successfully.")
-        return redirect(url_for('settings', cmp_id=cmp_id, obsc=obsc))
-   
-    if await slack_alert_form.validate_on_submit():
-        count_id = util_obj.key_gen(size=5)
-        
-        slack_alert_id = f"alrt:slack:{count_id}:{slack_alert_form.slack_channel_id.data}"
-
-        slack_alert_data = {'type': 'slack',
-                            'name': slack_alert_form.slack_channel_id.data,
-                            'channel_id': slack_alert_form.slack_channel_id.data,
-                            'token': slack_alert_form.slack_token.data,
-                            'id': slack_alert_id,
-                            'count': count_id
-                        }
-        
-        if await cl_data_db.upload_db_data(id=slack_alert_id, data=slack_alert_data) is None:
-            await flash(message=f"Alert contact creation failed...")
-            return redirect(url_for('settings', cmp_id=cmp_id, obsc=obsc))
-        
-        await flash(message=f"Alert contact {slack_alert_form.slack_channel_id.data} uploaded successfully.")
-        return redirect(url_for('settings', cmp_id=cmp_id, obsc=obsc))
   
-    return await render_template("app/settings.html", obsc_key=session.get('url_key'), cmp_id=cmp_id, data=data, jira_alert_form=jira_alert_form, slack_alert_form=slack_alert_form, cur_usr=cl_sess_data_dict.get('unm'), mntr_url=mntr_url, all_alert_types=all_alert_types, ws_url=ws_url, auth_id=cur_usr_id)
+    return await render_template("app/settings.html", obsc_key=session.get('url_key'), cmp_id=cmp_id, data=data, cur_usr=cl_sess_data_dict.get('unm'), mntr_url=mntr_url, all_alert_types=all_alert_types, ws_url=ws_url, auth_id=cur_usr_id)
 
 @app.route('/floweditor', defaults={'cmp_id': 'bcl','obsc': url_key}, methods=['GET', 'POST'])
 @app.route("/floweditor/<string:cmp_id>/<string:obsc>", methods=['GET', 'POST'])

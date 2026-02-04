@@ -272,7 +272,7 @@
         </li>
       </ul>
     </div>
-     <div class="sidenav-footer mx-3 ">
+    <div class="sidenav-footer mx-3 ">
       <div class="card card-background shadow-none card-background-mask-secondary" id="sidenavCard">
         <div class="full-background" style="background-image: url('/static/img/curved-images/white-curved.jpg')"></div>
         <div class="card-body text-start p-3 w-100">
@@ -280,14 +280,11 @@
             <i class="ni ni-diamond text-dark text-gradient text-lg top-0" aria-hidden="true" id="sidenavCardIcon"></i>
           </div>
           <div class="docs-info">
-            <div class="form-check form-switch">
-              <input class="form-check-input" type="checkbox" role="switch" id="tutorialSwitch">
-              <label class="form-check-label" for="tutorialSwitch">Disable Tutorial at Startup</label>
-            </div>
+            
           </div>
         </div>
       </div>
-      <a class="btn btn-primary mt-3 w-100" href="https://www.creative-tim.com/product/soft-ui-dashboard-pro?ref=sidebarfree">Upgrade to pro</a>
+      <a class="btn btn-primary mt-3 w-100">Upgrade to pro</a>
     </div>
   </aside>
   <main class="main-content position-relative max-height-vh-100 h-100 border-radius-lg overflow-auto" style="height: 85vh;">
@@ -307,6 +304,12 @@
                   <i class="sidenav-toggler-line"></i>
                 </div>
               </a>
+            </li>
+            <li class="nav-item px-3 d-flex align-items-center">
+              <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" role="switch" id="alertSwitch">
+                <label class="form-check-label" for="alertSwitch">Disable Alert Notifications</label>
+              </div>
             </li>
             <li class="nav-item dropdown pe-2 d-flex align-items-center">
               <a href="javascript:;" class="nav-link text-body p-0" id="dropdownMenuButton" data-bs-toggle="dropdown" aria-expanded="false">
@@ -402,7 +405,7 @@
       {% for message in get_flashed_messages() %}
       <div class="alert alert-info alert-dismissible fade show" role="alert">
           {{ message }}
-          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
       </div>
       {% endfor %}
     </div>

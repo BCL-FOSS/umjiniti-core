@@ -58,8 +58,8 @@
                 API Key Management
               </button>
               <div class="dropdown-menu">
-                <a class="dropdown-item" id="add-api">Generate</a>
-                <a class="dropdown-item" id="reset-api">Reset</a>
+                <a class="dropdown-item btn btn-outline-primary" id="add-api">Generate</a>
+                <a class="dropdown-item btn btn-outline-secondary" id="reset-api">Reset</a>
               </div>
             </div>
           </div>
@@ -81,12 +81,11 @@
               <div class="card card-blog card-plain">
                 <div class="position-relative">
                   <a class="d-block">
-                    <img src="{{ url_for('static', filename='img/bcl/expertise/neteng.jpg') }}" alt="img-blur-shadow"
+                    <img src="{{ url_for('static', filename='img/bcl/' + alerts.type + '.svg') }}" alt="img-blur-shadow"
                         class="img-fluid shadow border-radius-md"/>
                   </a>
                 </div>
                 <div class="card-body px-1 pb-0">
-                  <p class="text-secondary mb-0 text-sm" value="{{ alerts.id }}">ID: {{ alerts.count }}</p>
                   <a >
                     <h5 class="font-weight-bolder">
                       {{ alerts.name }}
@@ -95,10 +94,16 @@
                   <p class="mb-4 text-sm">
                     {{ alerts.type }}
                   </p>
+                  <p class="text-secondary mb-0 text-sm">Is Primary: {{ alerts.is_primary }}</p>
                   <div class="d-flex align-items-center justify-content-between">
-                    <button type="button" class="btn btn-outline-primary btn-sm mb-0" id="del-contact">
-                      Delete Contact
-                    </button>
+                    <div class="input-group mb-3">
+                      <button class="btn btn-outline-primary btn-sm mb-0" id="fav-contact">
+                        Make Primary {{ alerts.type.capitalize() }} Contact
+                      </button>
+                      <button type="button" class="btn btn-outline-danger btn-sm mb-0" id="del-contact">
+                        Delete Contact
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -124,6 +129,16 @@
                 </div>
               </div>
             </div>
+            <div class="col-xl-3 col-md-6 mb-xl-0 mb-4">
+              <div class="card h-100 card-plain border">
+                <div class="card-body d-flex flex-column justify-content-center text-center">
+                  <a id="add-email">
+                    <i class="fa fa-plus text-secondary mb-3"></i>
+                    <h5 class=" text-secondary"> Add Email Contact </h5>
+                  </a>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -131,7 +146,66 @@
   </div>
 </div>
 
-<div class="modal fade" id="alrtJiraModal" tabindex="-1" aria-labelledby="alrtJiraModalLabel" aria-hidden="true">
+<div class="modal fade" id="apiGenModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h1 class="modal-title fs-5" id="staticBackdropLabel">Generate API Key</h1>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        Are you sure you want to create a new API key? An OTP link will be sent to your registered email to retrieve the key.
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-primary" id="api-create">Generate </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="apiRefreshModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h1 class="modal-title fs-5" id="staticBackdropLabel">Refresh API Key</h1>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        Are you sure you want to refresh your API key? This action will invalidate your current key and generate a new one.
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-primary" id="api-refresh">Refresh</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="alrtEmailModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="alrtEmailModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="alrtEmailModalLabel">Add Email Credentials</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+          <form method="POST">
+            <div class="form-floating mb-3">
+              <label>Email</label>
+              <input type="email" class="form-control" placeholder="name@example.com" id="email-id">  
+            </div>
+          </form> 
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-primary" id="email-create">Create Email Contact</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="alrtJiraModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="alrtJiraModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
       <div class="modal-header">
@@ -140,29 +214,29 @@
       </div>
       <div class="modal-body">
           <form method="POST">
-            {{ jira_alert_form.hidden_tag() }}
             <div class="form-floating mb-3">
-              <label>{{ jira_alert_form.cloud_id.label }}</label>
-              {{ jira_alert_form.cloud_id(class="form-control") }}
+              <label>Cloud ID</label>
+              <input type="text" class="form-control" placeholder="your-cloud-id" id="jira-cloud-id">
             </div>
             <div class="form-floating mb-3">
-              <label>{{ jira_alert_form.email.label }}</label>
-              {{ jira_alert_form.email(class="form-control") }}    
+              <label>Email</label>
+              <input type="email" class="form-control" placeholder="name@example.com" id="jira-id">  
             </div>
             <div class="form-floating mb-3">
-              <label>{{ jira_alert_form.auth_token.label }}</label>
-              {{ jira_alert_form.auth_token(class="form-control") }}    
-            </div>
-            <div class="d-grid">
-              {{ jira_alert_form.submit(class="btn btn-dark mb-0") }}
+              <label>Auth Token</label>
+              <input type="password" class="form-control" placeholder="Auth Token" id="jira-token"> 
             </div>
           </form> 
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-primary" id="jira-create">Create Jira Contact</button>
       </div>
     </div>
   </div>
 </div>
 
-<div class="modal fade" id="alrtSlackModal" tabindex="-1" aria-labelledby="alrtSlackModalLabel" aria-hidden="true">
+<div class="modal fade" id="alrtSlackModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="alrtSlackModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
       <div class="modal-header">
@@ -171,19 +245,19 @@
       </div>
       <div class="modal-body">
           <form method="POST">
-            {{ slack_alert_form.hidden_tag() }}
             <div class="form-floating mb-3">
-              <label>{{ slack_alert_form.slack_token.label }}</label>
-              {{ slack_alert_form.slack_token(class="form-control") }}
+              <label>Slack Token</label>
+              <input type="password" class="form-control" placeholder="xoxb-..." id="slack-token">
             </div>
             <div class="form-floating mb-3">
-              <label>{{ slack_alert_form.slack_channel_id.label }}</label>
-              {{ slack_alert_form.slack_channel_id(class="form-control") }}    
-            </div>
-            <div class="d-grid">
-              {{ slack_alert_form.submit(class="btn btn-dark mb-0") }}
+              <label>Slack Channel ID</label>
+              <input type="text" class="form-control" placeholder="C01234567" id="slack-channel-id">
             </div>
           </form> 
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-primary" id="slack-create">Create Slack Contact</button>
       </div>
     </div>
   </div>
@@ -194,14 +268,107 @@
     const mntrURL = "{{ mntr_url }}";
     const addSlkBtn = document.getElementById('add-slack');
     const addJraBtn = document.getElementById('add-jira');
+    const addEmlBtn = document.getElementById('add-email');
     const addAPIBtn = document.getElementById('add-api');
     const resetAPIBtn = document.getElementById('reset-api');
+    const createJiraBtn = document.getElementById('jira-create');
+    const createSlackBtn = document.getElementById('slack-create');
+    const createEmailBtn = document.getElementById('email-create');
+    const refreshAPIBtn = document.getElementById('api-refresh'); 
+    const createAPIBtn = document.getElementById('api-create');
+   
 
     const jiraModal = new bootstrap.Modal(document.getElementById('alrtJiraModal'));
     const slackModal = new bootstrap.Modal(document.getElementById('alrtSlackModal'));
+    const apiGenModal = new bootstrap.Modal(document.getElementById('apiGenModal'));
+    const apiRefreshModal = new bootstrap.Modal(document.getElementById('apiRefreshModal'));
+    const emailModal = new bootstrap.Modal(document.getElementById('alrtEmailModal'));
 
-    addAPIBtn.addEventListener('click', async function() {
-      if (confirm("Generate API key?")) {
+    createEmailBtn.addEventListener('click', async function() {
+      emailModal.hide();
+
+      const email = document.getElementById('email-id').value;
+
+      resp = await fetch(`https://${mntrURL}/alertcfg?sess_id={{ auth_id }}`, {
+        method: 'POST',
+        credentials:"same-origin",
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          email: email,
+          type: 'email'
+        })
+      });
+
+      if (resp.status === 200) {
+        alert("Email contact has been added successfully.");
+        location.reload();
+      } else {
+        alert("Failed to add email contact. Please try again.");
+      }
+    });
+
+
+    createJiraBtn.addEventListener('click', async function() {
+      jiraModal.hide();
+
+      const cloudID = document.getElementById('jira-cloud-id').value;
+      const email = document.getElementById('jira-id').value;
+      const authToken = document.getElementById('jira-token').value;
+
+      resp = await fetch(`https://${mntrURL}/alertcfg?sess_id={{ auth_id }}`, {
+        method: 'POST',
+        credentials:"same-origin",
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          cloud_id: cloudID,
+          email: email,
+          auth_token: authToken,
+          type: 'jira'
+        })
+      });
+
+      if (resp.status === 200) {
+        alert("Jira contact has been added successfully.");
+        location.reload();
+      } else {
+        alert("Failed to add Jira contact. Please try again.");
+      }
+    });
+
+    createSlackBtn.addEventListener('click', async function() {
+      slackModal.hide();
+
+      const slackToken = document.getElementById('slack-token').value;
+      const slackChannelID =  document.getElementById('slack-channel-id').value;
+
+      resp = await fetch(`https://${mntrURL}/alertcfg?sess_id={{ auth_id }}`, {
+        method: 'POST',
+        credentials:"same-origin",
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          slack_token: slackToken,
+          slack_channel_id: slackChannelID,
+          type: 'slack'
+        })
+      });
+
+      if (resp.status === 200) {
+        alert("Slack contact has been added successfully.");
+        location.reload();
+      } else {
+        alert("Failed to add Slack contact. Please try again.");
+      }
+    });
+
+    createAPIBtn.addEventListener('click', async function() {
+      apiGenModal.hide();
+
         resp = await fetch(`https://${mntrURL}/createapi?sess_id={{ auth_id }}`, {
           method: 'POST',
           credentials:"same-origin"
@@ -213,21 +380,11 @@
         } else {
           alert("Failed to create API key. Please try again.");
         }
-   
-      }
-    
     });
 
-    addSlkBtn.addEventListener('click', function() {
-      slackModal.show();
-    });
+    refreshAPIBtn.addEventListener('click', async function() {
+      apiRefreshModal.hide();
 
-    addJraBtn.addEventListener('click', function() {
-      jiraModal.show();
-    });
-
-    resetAPIBtn.addEventListener('click', async function() {
-      if (confirm("Are you sure you want to reset your API key? This action cannot be undone.")) {
         resp = await fetch(`https://${mntrURL}/resetapi?sess_id={{ auth_id }}`, {
           method: 'POST',
           credentials:"same-origin"
@@ -239,8 +396,26 @@
         } else {
           alert("Failed to reset API key. Please try again.");
         }
-   
-      }
+    });
+
+    addAPIBtn.addEventListener('click', async function() {
+      apiGenModal.show();
+    });
+
+    addSlkBtn.addEventListener('click', function() {
+      slackModal.show();
+    });
+
+    addEmlBtn.addEventListener('click', function() {
+      emailModal.show();
+    });
+
+    addJraBtn.addEventListener('click', function() {
+      jiraModal.show();
+    });
+
+    resetAPIBtn.addEventListener('click', async function() {
+      apiRefreshModal.show();
     });
 
   });

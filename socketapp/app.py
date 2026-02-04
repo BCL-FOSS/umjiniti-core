@@ -479,6 +479,12 @@ async def session_watchdog(sess_id: str, check_interval: float = 5.0):
                     probe_data = await cl_data_db.get_all_data(match=f"*{sess_id}*")
                     probe_data_dict = next(iter(probe_data.values()))
 
+                    await cl_data_db.connect_db()
+
+                    await cl_data_db.upload_db_data(id=probe_data_dict.get('db_id'), data={'status': 'offline',
+                                                                                          'badge': 'danger',
+                                                                                          'last_online': now.isoformat()})
+
                     probe_outage_data = {'alert_type': 'probe_outage',
                                             'site': probe_data_dict.get('site'),
                                             'name': probe_data_dict.get('name'),
@@ -541,6 +547,18 @@ async def heartbeat(probe_id):
 
             asyncio.ensure_future(_receive())
             monitor_task = asyncio.create_task(session_watchdog(sess_id=probe_id))
+
+            current_probe_data = await cl_data_db.get_all_data(match=f"*{probe_id}*")
+
+            current_probe_data_dict = next(iter(current_probe_data.values()))
+
+            online_status = {'status': 'online',
+                             'badge': 'success',
+                             'last_online': now.isoformat()}
+
+            await cl_data_db.upload_db_data(id=current_probe_data_dict.get('db_id'), data=online_status)
+
+
 
         if probe_id and (probe_id in connected_probes):
             asyncio.ensure_future(_receive())
@@ -1271,7 +1289,7 @@ async def createapi():
                                                                                  subject=f"New umjiniti-core API Key Generated for {usr_data_dict.get('unm')}",
                                                                                  html_content=html_snippet
                                                                                  ))()
-           
+            logger.info(type(send_result))
             logger.info(f"API key creation email send result: {send_result}")
             return jsonify('API key creation successful. Check your email for the new API key.'), 200       
         else:
@@ -1286,6 +1304,96 @@ async def createapi():
         await ip_blocker(conn_obj=request)
         return InvalidTokenError()
     except Exception:
+        return jsonify("Error, occurred"), 400
+    
+@app.route('/alertcfg', methods=['POST'])
+async def alertcfg():
+    jwt_token = request.cookies.get("access_token")
+    sess_id = request.args.get('sess_id')
+
+    if not jwt_token or not sess_id:
+        await ip_blocker(conn_obj=request)
+        return jsonify(error="Missing required request data"), 400
+    
+    await cl_sess_db.connect_db()
+
+    if await cl_sess_db.get_all_data(match=f'*{sess_id}*', cnfrm=True) is False:
+        await ip_blocker(conn_obj=request)
+        return Unauthorized()
+    
+    try:
+        usr_sess_data = await cl_sess_db.get_all_data(match=f'*{sess_id}*')
+        logger.info(usr_sess_data)
+        usr_data_dict = next(iter(usr_sess_data.values()))
+        logger.info(usr_data_dict)
+
+        jwt_key = usr_data_dict.get(f'usr_jwt_secret')
+        logger.info(jwt_key)
+        decoded_token = jwt.decode(jwt=jwt_token, key=jwt_key , algorithms=["HS256"])
+        logger.info(decoded_token)
+
+        if decoded_token.get('rand') != usr_data_dict.get(f'usr_rand'):
+            await ip_blocker(conn_obj=request)
+            return Unauthorized()
+        
+        data = await request.get_json()
+        logger.info(data)
+
+        count_id = util_obj.key_gen(size=10)
+
+        if await cl_data_db.get_all_data(match=f"alrt:{data['type']}*", cnfrm=True) is False:
+            data['is_primary'] = True
+
+        if data['type'] == 'slack':
+            data['id'] = f"alrt:{data['type']}:{data['channel_id']}:{count_id}"
+
+        if data['type'] == 'jira':
+            data['id'] = f"alrt:{data['type']}:{data['email']}:{count_id}"
+
+        if data['type'] == 'email':
+            email_count = await cl_data_db.get_all_data(match=f"alrt:{data['type']}:count*")
+
+            if email_count is not None:
+                email_count_dict = next(iter(email_count.values()))
+                if email_count_dict.get('count') <= int(os.environ.get('MAX_CONTACTS_PER_TYPE')):
+                    count_id = email_count_dict.get('count') + 1
+                    if await cl_data_db.upload_db_data(id=f"alrt:{data['type']}:count", data={'count': count_id}) > 0:
+                        logger.info(f"Updated email alert count to {count_id}")
+
+                        data['id'] = f"alrt:{data['type']}:{data['email']}:{count_id}"
+
+                        new_contact_result = await run_sync(lambda: email_sender_handler.add_contact(email=data['email'],
+                                                                ext_id=data['id']))()
+                        logger.info(f"New contact creation result for email alert config: {new_contact_result}")
+                else:
+                    return jsonify(error=f"Maximum number of {data['type']} alert configs reached"), 400
+            else:
+                count_id = 1
+                if await cl_data_db.upload_db_data(id=f"alrt:{data['type']}:count", data={'count': count_id}) > 0:
+                    logger.info(f"Initialized email alert count to {count_id}")
+
+                    data['id'] = f"alrt:{data['type']}:{data['eml']}:{count_id}"
+
+                    new_contact_result = await run_sync(lambda: email_sender_handler.add_contact(email=data['email'],
+                                                                ext_id=data['id']))()
+                    logger.info(f"New contact creation result for email alert config: {new_contact_result}")
+
+        data['count'] = count_id
+
+        if await cl_data_db.upload_db_data(id=data['id'], data=data) > 0:
+            return jsonify({'status':' alert config received'}), 200
+        else:
+            return jsonify({'status':'alert config upload failed'}), 400
+
+    except ExpiredSignatureError:
+        logger.warning("JWT expired, need to refresh token")
+        await ip_blocker(conn_obj=request)
+        return ExpiredSignatureError()
+    except InvalidTokenError as e:
+        logger.error(f"JWT invalid: {e}")
+        await ip_blocker(conn_obj=request)
+        return InvalidTokenError()
+    except Exception():
         return jsonify("Error, occurred"), 400
     
 @app.errorhandler(Unauthorized)
