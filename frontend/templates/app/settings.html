@@ -266,6 +266,7 @@
 <script>
   document.addEventListener('DOMContentLoaded', function() {
     const mntrURL = "{{ mntr_url }}";
+    const notificationModal = new bootstrap.Modal(document.getElementById('notificationModal'), {});
     const addSlkBtn = document.getElementById('add-slack');
     const addJraBtn = document.getElementById('add-jira');
     const addEmlBtn = document.getElementById('add-email');

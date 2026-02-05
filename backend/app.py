@@ -8,7 +8,7 @@ import json
 from init_app import app, logger
 from quart_rate_limiter import rate_exempt
 import os
-from probe_mcp.ollamaproxy.utils.RedisDB import RedisDB
+from ai.smartbot.utils.RedisDB import RedisDB
 from quart import (websocket, abort, redirect, url_for, render_template, flash, jsonify)
 import asyncio
 import jwt
@@ -27,9 +27,9 @@ import ast
 import secrets
 from datetime import datetime, timedelta, timezone
 from tzlocal import get_localzone
-from probe_mcp.ollamaproxy.utils.EmailAlert import EmailAlert
+from ai.smartbot.utils.EmailAlert import EmailAlert
 from onetimesecret import OneTimeSecretCli
-from probe_mcp.ollamaproxy.utils.EmailSenderHandler import EmailSenderHandler
+from ai.smartbot.utils.EmailSenderHandler import EmailSenderHandler
 
 # Session and Auth Redis DB init
 cl_sess_db = RedisDB(hostname=os.environ.get('CLIENT_SESS_DB'), 

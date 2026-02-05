@@ -1,10 +1,10 @@
 services:
-  socket_app:
+  backend_app:
     restart: always
     build:
       context: .
-      dockerfile: socketapp/Dockerfile
-    container_name: socketapp
+      dockerfile: backend/Dockerfile
+    container_name: backend
     environment:
       - CLIENT_AUTH_DB=${CLIENT_AUTH_DB}
       - CLIENT_AUTH_DB_PORT=${CLIENT_AUTH_DB_PORT}
@@ -17,7 +17,7 @@ services:
       - RATE_LIMIT_DB=${RATE_LIMIT_DB}
       - RATE_LIMIT_DB_PORT=${RATE_LIMIT_DB_PORT}
       - SERVER_NAME=${SERVER_NAME}
-      - OLLAMA_PROXY_URL=http://ollama-proxy:8000/v1
+      - OLLAMA_PROXY_URL=http://smartbot:8000/v1
       - REQUEST_TIMEOUT=${REQUEST_TIMEOUT}
       - API_TOKEN_NAME=${API_TOKEN_NAME}
       - OTS_USER=${OTS_USER}
@@ -30,14 +30,14 @@ services:
       - OLLAMA_MODEL=${OLLAMA_MODEL}
       - MAX_CONTACTS_PER_TYPE=${MAX_CONTACTS_PER_TYPE}
     volumes:
-      - socket_data:/home/quart/instance/apps
+      - backend_data:/home/quart/instance/apps
     
-  agent_app:
+  frontend_app:
     restart: always
     build:
       context: .
-      dockerfile: agentapp/Dockerfile
-    container_name: agentapp
+      dockerfile: frontend/Dockerfile
+    container_name: frontend
     environment:
       - CLIENT_AUTH_DB=${CLIENT_AUTH_DB}
       - CLIENT_AUTH_DB_PORT=${CLIENT_AUTH_DB_PORT}
@@ -48,27 +48,27 @@ services:
       - IP_BAN_DB=${IP_BAN_DB}
       - IP_BAN_DB_PORT=${IP_BAN_DB_PORT}
       - SERVER_NAME=${SERVER_NAME}
-      - OLLAMA_PROXY_URL=http://ollama-proxy:8000/v1
+      - OLLAMA_PROXY_URL=http://smartbot:8000/v1
       - REQUEST_TIMEOUT=${REQUEST_TIMEOUT}
       - API_TOKEN_NAME=${API_TOKEN_NAME}
       - MAX_AUTH_ATTEMPTS=${MAX_AUTH_ATTEMPTS}
     volumes:
-      - agent_data:/home/quart/instance/apps
+      - frontend_data:/home/quart/instance/apps
 
-  ollama-proxy:
+  smartbot:
     restart: always
     build:
       context: .
-      dockerfile: socketapp/probe_mcp/ollamaproxy/Dockerfile
-    container_name: ollama-proxy
+      dockerfile: backend/ai/smartbot/Dockerfile
+    container_name: smartbot
     volumes:
-      - ollama_proxy_data:/home/quart/instance/apps
+      - smartbot_data:/home/quart/instance/apps
     environment:
       - CLIENT_DATA_DB=${CLIENT_DATA_DB}
       - CLIENT_DATA_DB_PORT=${CLIENT_DATA_DB_PORT}
       - REQUEST_TIMEOUT=${REQUEST_TIMEOUT}
       - OLLAMA_MODEL=qwen3:1.7b
-      - OLLAMA_PROXY_URL=http://ollama-proxy:8000/v1
+      - OLLAMA_PROXY_URL=http://smartbot:8000/v1
       - SERVER_NAME=${SERVER_NAME}
       
   ollama:
@@ -127,18 +127,19 @@ services:
       - caddy_data:/data
       - caddy_config:/config
     depends_on:
-      - agent_app
+      - frontend_app
+      - backend_app
 
 volumes:
   ip_ban_data:
     external: true
-  ollama_proxy_data:
+  smartbot_data:
     external: true
   ollama_models:
     external: true
-  socket_data:
+  backend_data:
     external: true
-  agent_data:
+  frontend_data:
     external: true
   client_data:
     external: true

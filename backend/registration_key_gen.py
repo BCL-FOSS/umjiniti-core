@@ -1,4 +1,4 @@
-from probe_mcp.ollamaproxy.utils.RedisDB import RedisDB
+from ai.smartbot.utils.RedisDB import RedisDB
 from utils.Util import Util
 from uuid import uuid4
 import asyncio

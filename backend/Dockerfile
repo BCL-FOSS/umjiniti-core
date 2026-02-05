@@ -8,11 +8,11 @@ RUN apt-get update -y
 
 RUN apt-get upgrade -y
 
-COPY socketapp/probe_mcp/ollamaproxy/requirements.txt ./
+COPY backend/requirements.txt ./
 
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY socketapp/probe_mcp/ollamaproxy/ /home/quart/
+COPY backend/ /home/quart/
 
 RUN chmod +x boot.sh 
 

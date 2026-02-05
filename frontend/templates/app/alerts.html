@@ -115,7 +115,7 @@
   </div>
 </div>
 
-<div class="modal fade" id="alertViewModal" tabindex="-1" aria-labelledby="alertViewModalLabel" aria-hidden="true">
+<div class="modal fade" id="alertViewModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="alertViewModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-lg modal-dialog-centered">
     <div class="modal-content">
       <div class="modal-header">
@@ -134,7 +134,7 @@
   </div>
 </div>
 
-<div class="modal fade" id="alertAckModal" tabindex="-1" aria-labelledby="alertAckModalLabel" aria-hidden="true">
+<div class="modal fade" id="alertAckModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="alertAckModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-lg modal-dialog-centered">
     <div class="modal-content">
       <div class="modal-header">
@@ -155,7 +155,7 @@
   </div>
 </div>
 
-<div class="modal fade" id="alertRslvModal" tabindex="-1" aria-labelledby="alertRslvModalLabel" aria-hidden="true">
+<div class="modal fade" id="alertRslvModal"  data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="alertRslvModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-lg modal-dialog-centered">
     <div class="modal-content">
       <div class="modal-header">
@@ -182,6 +182,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const table = document.querySelector("#probeTable");
   const rows = table.querySelectorAll("tbody tr");
   const mntrURL = "{{ mntr_url }}";
+  const notificationModal = new bootstrap.Modal(document.getElementById('notificationModal'), {});
 
   // Handle row selection
   rows.forEach(row => {

@@ -376,6 +376,22 @@
       {% endfor %}
     </div>
     {% block content %} {% endblock %}
+    <div class="modal fade" id="notificationModal" tabindex="-1" aria-labelledby="notificationModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="notificationModalLabel">Notification</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <p id="notif-modal-text"></p>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
     <footer class="footer pt-3  ">
         <div class="container-fluid">
           <div class="row align-items-center justify-content-lg-between">
@@ -435,6 +451,7 @@
     // let accessToken = getCookie("access_token");
     // Use JWT in Sec-WebSocket-Protocol
     let ws = new WebSocket(wsURLMon);
+    const notificationModal = new bootstrap.Modal(document.getElementById('notificationModal'), {});
 
     function connectWebSocket() {
 
@@ -578,6 +595,9 @@
     const taskHours = document.getElementById('task-hours');
     const taskMinutes = document.getElementById('task-minutes');
     const taskDom = document.getElementById('task-dom');
+    const prbNetVisModal = document.getElementById('probeNetVisModal');
+    const prbDelModal = document.getElementById('probeDeleteModal');
+    const prbTskModal = document.getElementById('probeTaskConfigModal');
 
     function appendMessage(chatWin, from, text) {
       chatWin.innerHTML+= `<p><strong>${from}</strong></p>`;
@@ -690,6 +710,11 @@
       }
 
       ws.send(JSON.stringify(taskData));
+      prbTskModal.hide()
+
+      document.getElementById('notif-modal-text').innerText = 'Network path trace task initiated. You will receive a notification when the trace is complete and the results are available for review.';
+
+      notificationModal.show();
     }
 
     function sendIperfTask() {
@@ -735,6 +760,11 @@
       }
 
       ws.send(JSON.stringify(taskData));
+      prbTskModal.hide()
+
+      document.getElementById('notif-modal-text').innerText = 'Network performance test initiated. You will receive a notification when the test is complete and the results are available for review.';
+
+      notificationModal.show();
     }
 
     function sendScanTask() {
@@ -784,6 +814,11 @@
       }
 
       ws.send(JSON.stringify(taskData));
+      prbTskModal.hide()
+
+      document.getElementById('notif-modal-text').innerText = 'Network scan task initiated. You will receive a notification when the scan is complete and the results are available for review.';
+
+      notificationModal.show();
     }
 
     function sendPcapTask() {
@@ -837,6 +872,12 @@
       }
 
       ws.send(JSON.stringify(taskData));
+      prbTskModal.hide()
+
+      document.getElementById('notif-modal-text').innerText = 'Packet capture task initiated. You will receive a notification when the capture is complete and the results are available for review.';
+
+      notificationModal.show();
+      
     }
 
     // LLM Chat event listeners

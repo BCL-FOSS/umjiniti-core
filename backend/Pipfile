@@ -1,0 +1,23 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+quart = "*"
+asyncio = "*"
+uvicorn = "*"
+nest-asyncio = "*"
+aiohttp = "*"
+passlib = "*"
+bcrypt = "*"
+langgraph = "*"
+langsmith = "*"
+langchain = {extras = ["openai"], version = "*"}
+langchain-community = "*"
+langchain-experimental = "*"
+
+[dev-packages]
+
+[requires]
+python_version = "3.12"

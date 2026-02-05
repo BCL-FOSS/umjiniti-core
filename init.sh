@@ -78,8 +78,8 @@ dockersetup() {
 
   sudo docker-compose build --no-cache 
 
-  sudo docker volume create --name=socket_data
-  sudo docker volume create --name=agent_data
+  sudo docker volume create --name=backend_data
+  sudo docker volume create --name=frontend_data
   sudo docker volume create --name=client_sess_data
   sudo docker volume create --name=client_auth_data
   sudo docker volume create --name=client_data
@@ -87,7 +87,7 @@ dockersetup() {
   sudo docker volume create --name=caddy_data
   sudo docker volume create --name=caddy_config
   sudo docker volume create --name=ollama_models
-  sudo docker volume create --name=ollama_proxy_data
+  sudo docker volume create --name=smartbot_data
   sudo docker volume create --name=ip_ban_data
   sudo docker-compose up
  

@@ -92,7 +92,7 @@
   </div>
 </div>
 
-<div class="modal fade" id="flowRunModal" tabindex="-1" aria-labelledby="runFlowModalLabel" aria-hidden="true">
+<div class="modal fade" id="flowRunModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="runFlowModalLabel" aria-hidden="true">
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
@@ -112,7 +112,7 @@
   </div>
 </div>
 
-<div class="modal fade" id="flowEditModal" tabindex="-1" aria-labelledby="editFlowModalLabel" aria-hidden="true">
+<div class="modal fade" id="flowEditModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="editFlowModalLabel" aria-hidden="true">
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
@@ -182,7 +182,7 @@
   </div>
 </div>
 
-<div class="modal fade" id="flowScheduleModal" tabindex="-1" aria-labelledby="scheduleFlowModalLabel" aria-hidden="true">
+<div class="modal fade" id="flowScheduleModal"  data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="scheduleFlowModalLabel" aria-hidden="true">
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
@@ -253,7 +253,7 @@
   </div>
 </div>
 
-<div class="modal fade" id="flowDeleteModal" tabindex="-1" aria-labelledby="deleteFlowModalLabel" aria-hidden="true">
+<div class="modal fade" id="flowDeleteModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="deleteFlowModalLabel" aria-hidden="true">
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
@@ -279,6 +279,7 @@
   const user = "{{ user }}";
   const jwtToken = "{{ jwt_token }}";
   const curUser = "{{ cur_usr }}";
+  const notificationModal = new bootstrap.Modal(document.getElementById('notificationModal'), {});
 
   var id = document.getElementById("edit-drawflow");
   const editor = new Drawflow(id);

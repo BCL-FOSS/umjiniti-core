@@ -87,7 +87,7 @@
   </div>
 </div>
 
-<div class="modal fade" id="probeNetVisModal" tabindex="-1" aria-labelledby="probeNetVisModalLabel" aria-hidden="true">
+<div class="modal fade" id="probeNetVisModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="probeNetVisModalLabel" aria-hidden="true">
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
@@ -138,7 +138,7 @@
   </div>
 </div>
 
-<div class="modal fade" id="probeDeleteModal" tabindex="-1" aria-labelledby="probeDeleteModalLabel" aria-hidden="true">
+<div class="modal fade" id="probeDeleteModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="probeDeleteModalLabel" aria-hidden="true">
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
@@ -150,13 +150,16 @@
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-        <button type="button" class="btn btn-danger" id="delete-probe">Delete</button>
+        <button type="button" class="btn btn-danger" id="delete-probe">
+          <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+          <span class="button-text">Delete</span>
+        </button>
       </div>
     </div>
   </div>
 </div>
 
-<div class="modal fade" id="probeTaskConfigModal" tabindex="-1" aria-labelledby="probeTaskConfigModalLabel" aria-hidden="true">
+<div class="modal fade" id="probeTaskConfigModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="probeTaskConfigModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-lg modal-dialog-centered">
     <div class="modal-content">
       <div class="modal-header">
@@ -539,6 +542,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const table = document.querySelector("#probeTable");
   const rows = table.querySelectorAll("tbody tr");
   const mntrURL = "{{ mntr_url }}";
+  const notificationModal = new bootstrap.Modal(document.getElementById('notificationModal'), {});
 
   // Handle row selection
   rows.forEach(row => {
@@ -659,7 +663,19 @@ document.addEventListener("DOMContentLoaded", () => {
     const payload = { id: probeId };
 
     try {
-      //const resp = await fetch(endpoint, {method: "POST", headers: {"Content-Type": "application/json", "X-ACCESS-TOKEN": "{{ jwt_token }}"}, body: JSON.stringify(payload)});
+      // Select the spinner element within the button
+      const spinner = this.querySelector('.spinner-border');
+      // Select the text element within the button
+      const buttonText = this.querySelector('.button-text');
+
+      // Show the spinner and hide the text
+      spinner.classList.remove('d-none');
+      spinner.classList.add('d-inline-block');
+      buttonText.classList.add('d-none');
+      
+      // Disable the button
+      this.disabled = true;
+
       const resp = await fetch(endpoint, {method: "POST", credentials:"same-origin", headers: {"Content-Type": "application/json"}, body: JSON.stringify(payload)});
       if (resp.ok) {
         alert("Probe deletion successful");

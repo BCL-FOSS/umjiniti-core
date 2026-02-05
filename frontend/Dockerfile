@@ -2,18 +2,18 @@ FROM python:3.12
 
 RUN adduser quart --disabled-password 
 
-WORKDIR /home/quart
-
 RUN apt-get update -y
 
 RUN apt-get upgrade -y
 
-COPY socketapp/requirements.txt ./
+WORKDIR /home/quart
+
+COPY frontend/requirements.txt ./
 
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY socketapp/ /home/quart/
+COPY frontend/ /home/quart/
 
-RUN chmod +x boot.sh 
+RUN chmod +x boot.sh
 
 ENTRYPOINT ["sh", "./boot.sh"]
