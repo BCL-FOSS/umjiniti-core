@@ -70,3 +70,4 @@ agentapp/templates/app/settings-old.html
 agentapp/templates/index/index_old.html
 socketapp/probe_mcp/ollamaproxy/test.py
 agentapp/templates/app/probes_old.html
+frontend/templates/app/probes copy.html

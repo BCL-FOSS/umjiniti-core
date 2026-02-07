@@ -65,7 +65,8 @@
                           data-url="{{ probe.url|e }}"
                           data-site="{{ probe.site|e }}"
                           data-id="{{ probe.prb_id|e }}"
-                          data-ifaces="{{ probe.iface_list|e }}">
+                          data-ifaces="{{ probe.iface_list|e }}"
+                          data-apikey="{{ probe.prb_api_key|e }}">
                         Network Visualizer
                       </button>
                       <button class="btn btn-sm btn-outline-danger ms-2 probe-delete-btn"
@@ -89,96 +90,280 @@
 </div>
 
 <div class="modal fade" id="probeNetVisModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="probeNetVisModalLabel" aria-hidden="true">
-  <div class="modal-dialog">
+  <div class="modal-dialog modal-xl modal-dialog-centered">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="probeNetVisModalLabel">Probe Network Map</h5>
+        <h5 class="modal-title" id="probeNetVisModalLabel">Probe Network Visualizer</h5>
+        <div id="netvis-probe-id" style="display:none;"></div>
+        <div id="netvis-probe-url" style="display:none;"></div>
+        <div id="netvis-probe-site" style="display:none;"></div>
+        <div id="netvis-probe-name" style="display:none;"></div>
+        <div id="netvis-probe-ifaces" style="display:none;"></div>
+        <div id="netvis-probe-apikey" style="display:none;"></div>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
-        <div class="container-fluid py-4">
-          <div class="row mb-4">
-            <div class="col-12 mt-4 mt-lg-0">
-              <div class="card shadow h-100">
-                <div class="card-header pb-0 p-3">
-                  <div class="row">
-                    <div class="col-6">
-                      <label class="mb-0 form-label">Select Interface</label>
-                      <select id="prb-netmap-ifaces-select" class="form-select"></select>
-                    </div>
-                    <div class="col-6">
-                      <select class="form-select" id="prb-netmap-scan-select">
-                        <option value="scan_arp">ARP Scan</option>
-                        <option value="scan_custom">Custom Scan</option>
-                        <option value="scan_dev_id">Device Identification Scan</option>
-                        <option value="scan_dev_fngr">Device Fingerprint Scan</option>
-                        <option value="scan_full">Full Network Scan</option>
-                        <option value="scan_snmp">SNMP Scan</option>
-                        <option value="scan_port">Port Scan</option>
-                      </select>
-                    </div>
+        <!-- Tabs Navigation -->
+        <ul class="nav nav-tabs" id="netVisTab" role="tablist">
+          <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="path-trace-tab" data-bs-toggle="tab" data-bs-target="#path-trace-pane" type="button" role="tab" aria-controls="path-trace-pane" aria-selected="true">
+              Path Trace
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="perf-test-tab" data-bs-toggle="tab" data-bs-target="#perf-test-pane" type="button" role="tab" aria-controls="perf-test-pane" aria-selected="false">
+              Performance Test
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="scans-tab" data-bs-toggle="tab" data-bs-target="#scans-pane" type="button" role="tab" aria-controls="scans-pane" aria-selected="false">
+              Scans
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="pcap-tab" data-bs-toggle="tab" data-bs-target="#pcap-pane" type="button" role="tab" aria-controls="pcap-pane" aria-selected="false">
+              Packet Captures
+            </button>
+          </li>
+        </ul>
+
+        <!-- Tabs Content -->
+        <div class="tab-content pt-3" id="netVisTabContent">
+          <!-- Path Trace Tab -->
+          <div class="tab-pane fade show active" id="path-trace-pane" role="tabpanel" aria-labelledby="path-trace-tab">
+            <div class="card shadow h-100">
+              <div class="card-header pb-0 p-3">
+                <div class="row mb-3">
+                  <div class="col-md-6">
+                    <label class="form-label">Trace Type</label>
+                    <select id="trace-type-select" class="form-select">
+                      <option value="trcrt">Traceroute</option>
+                      <option value="trcrt_dns">DNS Traceroute</option>
+                    </select>
                   </div>
-                  <div class="row">
-                    <div class="col-6">
-                      <div class="form-check form-switch">
-                        <input class="form-check-input" type="checkbox" role="switch" id="prb-netmap-scan-fplimit-switch">
-                        <label class="form-check-label" for="prb-netmap-scan-fplimit-switch">Limit Fingerprint Scan</label>
-                      </div>
-                    </div>
-                    <div class="col-6">
-                      <div class="form-check form-switch">
-                        <input class="form-check-input" type="checkbox" role="switch" id="prb-netmap-scan-devid-noise-switch">
-                        <label class="form-check-label" for="prb-netmap-scan-devid-noise-switch">Reduce Device Identification Scan Noise</label>
-                      </div>
-                    </div>
+                  <div class="col-md-6">
+                    <label class="form-label">Target</label>
+                    <input type="text" id="netvis-trace-target-input" class="form-control" placeholder="Enter target IP/domain">
                   </div>
-                  <div class="row">
-                    <div class="col-6">
-                      <label class="form-label">SNMP scripts</label>
-                      <input type="text" class="form-control" placeholder="scripts" id="prb-netmap-snmp-scripts">
-                      <p class="form-text">For SNMP Scan only. Enter comma-separated nmap SNMP scripts to run (optional)</p>
-                    </div>
-                    <div class="col-6">
-                      <label class="form-label">Ports to scan</label>
-                      <input type="text" class="form-control" placeholder="ports" id="prb-netmap-ports">
-                      <p class="form-text">For Port Scan only. Enter comma-separated ports to scan (optional)</p>
+                </div>
+                <div class="row mb-3">
+                  <div class="col-6">
+                    <label class="form-label">Options</label>
+                    <input type="text" id="netvis-trace-options-input" class="form-control" placeholder="Additional command options (optional)">
+                  </div>
+                  <div class="col-6">
+                    <label class="form-label">DNS Server (for DNS Trace only)</label>
+                    <input type="text" id="netvis-trace-dns-server-input" class="form-control" placeholder="DNS server to test (optional)">
+                  </div>
+                </div>
+                <div class="row mb-3">
+                  <div class="col-6">
+                    <label class="form-label">Packet Length (for Traceroute only)</label>
+                    <input type="text" id="netvis-trace-packetlen-input" class="form-control" placeholder="Preferred packet length (optional)">
+                  </div>
+                  <div class="col-6">
+                    <div class="input-group mb-3">
+                      <button class="btn btn-primary btn-sm" id="netvis-trace-run-btn">
+                        <span class="spinner-grow spinner-grow-sm d-none" role="status" aria-hidden="true"></span>
+                        <span class="netvis-trace-run-text">Run Trace</span>
+                      </button>
+                      <button class="btn btn-secondary btn-sm" id="netvis-trace-load-btn">
+                        <span class="spinner-grow spinner-grow-sm d-none" role="status" aria-hidden="true"></span>
+                        <span class="netvis-trace-load-text">Load Last Trace</span>
+                      </button>
                     </div>
                   </div>
                 </div>
-                <div class="card-body pb-0 p-3">
-                  <div id="controls">
-                    <div id="alerts"></div>
+              </div>
+              <div class="card-body p-3">
+                <div id="trace-alerts"></div>
+                <div id="network-trace" style="width: 100%; height: 500px; border: 1px solid #ccc; background: #f0f0f0;"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Performance Test Tab -->
+          <div class="tab-pane fade" id="perf-test-pane" role="tabpanel" aria-labelledby="perf-test-tab">
+            <div class="card shadow h-100">
+              <div class="card-header pb-0 p-3">
+                <div class="row">
+                  <div class="col-6">
+                    <label class="form-label">Test Type</label>
+                    <select id="netvis-perf-type-select" class="form-select">
+                      <option value="perf_srvr">Server Mode</option>
+                      <option value="perf_clnt">Client Mode</option>
+                    </select>
                   </div>
-                  
-                  <div id="network"></div>
-                  
-                  <!-- Modal for Node Info -->
-                  <div id="modal" class="modal">
-                    <div class="modal-content">
-                      <span id="modal-close">&times;</span>
-                      <div id="modal-body"></div>
+                  <div class="col-6">
+                    <label class="form-label">Server Address (Client Mode)</label>
+                    <input type="text" id="netvis-perf-server-input" class="form-control" placeholder="Server IP">
+                  </div>
+                </div>
+                <div class="row mb-3">
+                  <div class="col-6">
+                    <label class="form-label">Options</label>
+                    <input type="text" id="netvis-perf-options-input" class="form-control" placeholder="Additional command options (optional)">
+                  </div>
+                  <div class="col-6">
+                    <label class="form-label">Host</label>
+                    <input type="text" id="netvis-perf-host-input" class="form-control" placeholder="The IP of the network interface the performnce test will bind to (optional)">
+                  </div>
+                </div>
+                <div class="row mt-2">
+                  <div class="col-12">
+                    <div class="input-group mb-3">
+                      <button class="btn btn-primary btn-sm" id="netvis-perf-run-btn">
+                        <span class="spinner-grow spinner-grow-sm d-none" role="status" aria-hidden="true"></span>
+                        <span class="netvis-perf-run-text">Run Test</span>
+                      </button>
+                      <button class="btn btn-secondary btn-sm" id="netvis-perf-load-btn">
+                        <span class="spinner-grow spinner-grow-sm d-none" role="status" aria-hidden="true"></span>
+                        <span class="netvis-perf-load-text">Load Test</span>
+                      </button>
                     </div>
                   </div>
                 </div>
-                <div class="card-footer pt-0 p-3 d-flex align-items-center">
-                  <div class="w-60">
-                    <p class="text-sm">
-                    </p>
+              </div>
+              <div class="card-body p-3">
+                <div id="perf-alerts"></div>
+                <div id="network-perf" style="width: 100%; height: 500px; border: 1px solid #ccc; background: #f0f0f0;"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Scans Tab -->
+          <div class="tab-pane fade" id="scans-pane" role="tabpanel" aria-labelledby="scans-tab">
+            <div class="card shadow h-100">
+              <div class="card-header pb-0 p-3">
+                <div class="row">
+                  <div class="col-6">
+                    <label class="mb-0 form-label">Select Interface</label>
+                    <select id="netvis-scan-ifaces-select" class="form-select"></select>
                   </div>
-                  <div class="w-40 text-end">
+                  <div class="col-6">
+                    <select class="form-select" id="netvis-scan-select">
+                      <option value="scan_arp">ARP Scan</option>
+                      <option value="scan_custom">Custom Scan</option>
+                      <option value="scan_dev_id">Device Identification Scan</option>
+                      <option value="scan_dev_fngr">Device Fingerprint Scan</option>
+                      <option value="scan_full">Full Network Scan</option>
+                      <option value="scan_snmp">SNMP Scan</option>
+                      <option value="scan_port">Port Scan</option>
+                    </select>
                   </div>
                 </div>
+                <div class="row">
+                  <div class="col-6">
+                    <div class="form-check form-switch">
+                      <input class="form-check-input" type="checkbox" role="switch" id="netvis-scan-fplimit-switch">
+                      <label class="form-check-label" for="netvis-scan-fplimit-switch">Limit Fingerprint Scan</label>
+                    </div>
+                  </div>
+                  <div class="col-6">
+                    <div class="form-check form-switch">
+                      <input class="form-check-input" type="checkbox" role="switch" id="netvis-scan-devid-noise-switch">
+                      <label class="form-check-label" for="netvis-scan-devid-noise-switch">Reduce Device Identification Scan Noise</label>
+                    </div>
+                  </div>
+                </div>
+                <div class="row">
+                  <div class="col-6">
+                    <label class="form-label">SNMP scripts</label>
+                    <input type="text" class="form-control" placeholder="scripts" id="netvis-scan-snmp-scripts">
+                    <p class="form-text">For SNMP Scan only. Enter comma-separated nmap SNMP scripts to run (optional)</p>
+                  </div>
+                  <div class="col-6">
+                    <label class="form-label">Ports to scan</label>
+                    <input type="text" class="form-control" placeholder="ports" id="netvis-scan-ports">
+                    <p class="form-text">For Port Scan only. Enter comma-separated ports to scan (optional)</p>
+                  </div>
+                </div>
+              </div>
+              <div class="row mt-2">
+                <div class="col-12">
+                  <div class="input-group mb-3">
+                    <button class="btn btn-primary btn-sm" id="netvis-scan-run-btn">
+                      <span class="spinner-grow spinner-grow-sm d-none" role="status" aria-hidden="true"></span>
+                      <span class="netvis-scan-run-text">Run Scan</span>
+                    </button>
+                    <button class="btn btn-secondary btn-sm" id="netvis-scan-load-btn">
+                      <span class="spinner-grow spinner-grow-sm d-none" role="status" aria-hidden="true"></span>
+                      <span class="netvis-scan-load-text">Load Scan</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div class="card-body p-3">
+                <div id="scan-alerts"></div>
+                <div id="network-scan" style="width: 100%; height: 500px; border: 1px solid #ccc; background: #f0f0f0;"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Packet Captures Tab -->
+          <div class="tab-pane fade" id="pcap-pane" role="tabpanel" aria-labelledby="pcap-tab">
+            <div class="card shadow h-100">
+              <div class="card-header pb-0 p-3">
+                <div class="row">
+                  <div class="col-6">
+                    <label class="form-label">Capture Interface</label>
+                    <select id="netvis-pcap-ifaces-select" class="form-select"></select>
+                  </div>
+                  <div class="col-6">
+                    <label class="form-label">Capture Mode</label>
+                    <select id="netvis-pcap-mode-select" class="form-select">
+                      <option value="pcap_lcl">Local Capture</option>
+                      <option value="pcap_tux">Remote Linux</option>
+                      <option value="pcap_win">Remote Windows</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="row mb-3">
+                  <div class="col-6">
+                    <label class="form-label">Packet Count (Local & Linux Only)</label>
+                    <input type="number" id="netvis-pcap-count-input" class="form-control" value="100">
+                  </div>
+                  <div class="col-6">
+                    <label class="form-label">Capture Duration (seconds, Windows only)</label>
+                    <input type="number" id="netvis-pcap-duration-input" class="form-control" value="60">
+                  </div>
+                </div>
+                <div class="row mb-3">
+                  <div class="col-4">
+                    <label class="form-label">Remote Host (Remote Capture Only)</label>
+                    <input type="text" id="netvis-pcap-remote-host-input" class="form-control" placeholder="IP of remote host for capture">
+                </div>
+                <div class="col-4">
+                    <label class="form-label">Remote User (Remote Capture Only)</label>
+                    <input type="text" id="netvis-pcap-remote-user-input" class="form-control" placeholder="Username for remote host">
+                </div>
+                <div class="col-4">
+                    <label class="form-label">Remote Password (Remote Capture Only)</label>
+                    <input type="password" id="netvis-pcap-remote-pass-input" class="form-control" placeholder="Password for remote host">
+                </div>
+                <div class="row mt-2">
+                  <div class="col-12">
+                    <button class="btn btn-primary btn-sm" id="netvis-pcap-run-btn">
+                      <span class="spinner-grow spinner-grow-sm d-none" role="status" aria-hidden="true"></span>
+                      <span class="netvis-pcap-run-text">Run Capture</span>
+                    </button>
+                    <button class="btn btn-secondary btn-sm" id="netvis-pcap-load-btn">
+                      <span class="spinner-grow spinner-grow-sm d-none" role="status" aria-hidden="true"></span>
+                      <span class="netvis-pcap-load-text">Load Capture</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div class="card-body p-3">
+                <div id="pcap-alerts"></div>
+                <div id="network-pcap" style="width: 100%; height: 500px; border: 1px solid #ccc; background: #f0f0f0;"></div>
               </div>
             </div>
           </div>
         </div>
       </div>
       <div class="modal-footer">
-        <div class="input-group mb-3">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-          <button type="button" class="btn btn-primary" id="prb-load-netscan">Load Current Map</button>
-          <button type="button" class="btn btn-primary" id="prb-run-netscan">Scan Network</button>
-        </div>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
       </div>
     </div>
   </div>
@@ -257,7 +442,7 @@
                 </div>
                 <div class="form-floating mb-3">
                   <label class="form-label">Packet Length</label>
-                  <input type="text" class="form-control" placeholder="Enter preferred packet length" id="trcrt-packetlen">
+                  <input type="number" class="form-control" placeholder="Enter preferred packet length" id="trcrt-packetlen">
                   <div class="form-text">For traceroute only (optional)</div>
                 </div>
                 <div class="d-grid">
@@ -301,31 +486,62 @@
           <div class="tab-pane fade" id="scan-tab-pane" role="tabpanel" aria-labelledby="scan-tab" tabindex="0">
             <div id="scan-tab-content">
               <form method="POST">
-                <h6 class="form-label bold" id="scan-ifaces">Scan Interfaces</h6>
                 <div class="form-floating mb-3">
-                  <label class="form-label">Scan Type</label>
-                  <select class="form-select" aria-label="Scan Mode" id="scan-dropdown">
-                    <option value="scan_arp">ARP Scan</option>
-                    <option value="scan_custom">Custom Scan</option>
-                    <option value="scan_dev_id">Device Identification Scan</option>
-                    <option value="scan_dev_fngr">Device Fingerprint Scan</option>
-                    <option value="scan_full">Full Network Scan</option>
-                    <option value="scan_snmp">SNMP Scan</option>
-                    <option value="scan_port">Port Scan</option>
-                  </select>
+                  <div class="row">
+                    <div class="col-6">
+                      <label class="form-label">Select Interface</label>
+                      <select id="scan-ifaces-select" class="form-select"></select>
+                    </div>
+                    <div class="col-6">
+                      <label class="form-label">Select Scan Type</label>
+                      <select class="form-select" id="scan-type-select" aria-label="Select Scan Type">
+                        <option value="scan_arp">ARP Scan</option>
+                        <option value="scan_custom">Custom Scan</option>
+                        <option value="scan_dev_id">Device Identification Scan</option> 
+                        <option value="scan_dev_fngr">Device Fingerprint Scan</option>
+                        <option value="scan_full">Full Network Scan</option>
+                        <option value="scan_snmp">SNMP Scan</option>
+                        <option value="scan_port">Port Scan</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+                <div class="form-floating mb-3">
+                  <div class="row">
+                    <div class="col-6">
+                      <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" role="switch" id="scan-fplimit-switch">
+                        <label class="form-check-label" for="scan-fplimit-switch">Limit Fingerprint Scan</label>
+                      </div>
+                    </div>
+                    <div class="col-6">
+                      <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" role="switch" id="scan-devid-noise-switch">
+                        <label class="form-check-label" for="scan-devid-noise-switch">Reduce Device Identification Scan Noise</label>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="row">
+                    <div class="col-6">
+                      <label class="form-label">SNMP scripts</label>
+                      <input type="text" class="form-control" placeholder="scripts" id="scan-snmp-scripts">
+                      <p class="form-text">For SNMP Scan only. Enter comma-separated nmap SNMP scripts to run (optional)</p>
+                    </div>
+                    <div class="col-6">
+                      <label class="form-label">Ports to scan</label>
+                      <input type="text" class="form-control" placeholder="ports" id="scan-ports">
+                      <p class="form-text">For Port Scan only. Enter comma-separated ports to scan (optional)</p>
+                    </div>
+                  </div>
                 </div>
                 <div class="form-floating mb-3">
                   <label class="form-label">Target Subnet/IP</label>
                   <input type="text" class="form-control" id="scan-target">
                 </div>
                 <div class="form-floating mb-3">
-                  <label class="form-label">Scan Interface</label>
-                  <input type="text" class="form-control" id="scan-interface">
-                </div>
-                <div class="form-floating mb-3">
-                  <label class="form-label">nmap Command Options</label>
+                  <label class="form-label">Command Options</label>
                   <input type="text" class="form-control" id="scan-options" >
-                  <div class="form-text" id="scan-addon4">Options for the nmap command</div>
+                  <div class="form-text" id="scan-addon4">Options for the scan command</div>
                 </div>
                 <div class="d-grid">
                   <button type="button" class="btn btn-dark mb-0" id="scan-init">
@@ -339,26 +555,43 @@
           <div class="tab-pane fade" id="pcap-tab-pane" role="tabpanel" aria-labelledby="pcap-tab" tabindex="0">
             <div id="pcap-tab-content">
               <form method="POST">
-                <h6 class="form-label bold" id="pcap-ifaces">PCAP Interfaces</h6>
                 <div class="form-floating mb-3">
-                  <label class="form-label">Capture Mode</label>
-                  <select class="form-select" id="pcap-dropdown" aria-label="Capture Mode">
-                    <option value="pcap_lcl">Local Capture</option>
-                    <option value="pcap_tux">Remote Linux Capture</option>
-                    <option value="pcap_win">Remote Windows Capture</option>
-                  </select>
-                </div>
-                <div class="form-floating mb-3">
-                  <label class="form-label">Capture Interface</label>
-                  <input type="text" class="form-control" placeholder="Capture Interface" id="pcap-interface">
+                  <div class="row mb-3">
+                    <div class="col-6">
+                      <label class="form-label">Available Probe Interfaces</label>
+                      <select class="form-select" id="pcap-ifaces-select" aria-label="Available Probe Interfaces"></select>
+                    </div>
+                    <div class="col-6">
+                      <label class="form-label">Capture Mode</label>
+                      <select class="form-select" id="pcap-dropdown" aria-label="Capture Mode">
+                        <option value="pcap_lcl">Local Capture</option>
+                        <option value="pcap_tux">Remote Linux Capture</option>
+                        <option value="pcap_win">Remote Windows Capture</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="row mb-3">
+                    <div class="col-4">
+                      <label class="form-label">Remote Host</label>
+                      <input type="text" class="form-control" id="pcap-remote-host-input" placeholder="IP of remote host for capture">
+                    </div>
+                    <div class="col-4">
+                      <label class="form-label">Remote User</label>
+                      <input type="text" class="form-control" id="pcap-remote-user-input" placeholder="Username for remote host">
+                    </div>
+                    <div class="col-4">
+                      <label class="form-label">Remote Password</label>
+                      <input type="password" class="form-control" id="pcap-remote-pass-input" placeholder="Password for remote host">
+                    </div>
+                  </div>
                 </div>
                 <div class="form-floating mb-3">
                   <label class="form-label">Capture Count (Linux & Local only)</label>
-                  <input type="text" class="form-control" placeholder="The number of packets to capture" id="pcap-count-target">
+                  <input type="number" class="form-control" placeholder="The number of packets to capture" id="pcap-count-target">
                 </div>
                 <div class="form-floating mb-3">
                   <label class="form-label">Capture Duration (Windows only)</label>
-                  <input type="text" class="form-control" placeholder="Capture duration in seconds" id="pcap-duration-target">
+                  <input type="number" class="form-control" placeholder="Capture duration in seconds" id="pcap-duration-target">
                 </div>
                 <div class="d-grid">
                   <button type="button" class="btn btn-dark mb-0" id="pcap-init">
@@ -385,8 +618,13 @@
               <div class="col-6">
                 <div class="form-check form-switch">
                   <input class="form-check-input" type="checkbox" role="switch" id="flowbotInitSwitch">
-                  <label class="form-check-label" for="flowbotInitSwitch">Create FlowBot agentic workflow</label>
+                  <label class="form-check-label" for="flowbotInitSwitch">Create FlowBot Agent</label>
                 </div>
+              </div>
+            </div>
+            <div class="row mb-3">
+              <div class="col-12">
+                <input class="form-control" type="text" id="task-llm-query" placeholder="Enter query for FlowBot agent to process">
               </div>
             </div>
           </div>
@@ -439,7 +677,7 @@
 </div>
 
 <script type="text/javascript">
-document.addEventListener("DOMContentLoaded", () => {
+
   const table = document.querySelector("#probeTable");
   const rows = table.querySelectorAll("tbody tr");
   const mntrURL = "{{ mntr_url }}";
@@ -462,8 +700,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const probeNetVisButtons = document.querySelectorAll(".probe-netvis-btn");
   const probeDeleteButtons = document.querySelectorAll(".probe-delete-btn");
   const deleteProbeButton = document.getElementById('delete-probe');
-  const probeLoadNetMapButton = document.getElementById('prb-load-netscan');
-  const probeRunNetScanButton = document.getElementById('prb-run-netscan');
 
   const netVisModalEl = document.getElementById('probeNetVisModal');
   let netVisBsModal = null;
@@ -491,14 +727,24 @@ document.addEventListener("DOMContentLoaded", () => {
       const site = btn.dataset.site || '';
       const id = btn.dataset.id || '';
       const ifaces = btn.dataset.ifaces || '';
+      const ifaces_list = JSON.parse(ifaces);
+      const scan_select = document.getElementById('scan-ifaces-select');
+      const pcap_select = document.getElementById('pcap-ifaces-select');
 
       // Fill modal fields
       document.getElementById('probeTaskConfigModalLabel').textContent = `${name} Task Automation Settings`;
       document.getElementById('probe-id-modal').dataset.pid = id;
       document.getElementById('probe-name-modal').dataset.name = name;
       document.getElementById('probe-site-modal').dataset.site = site;
-      document.getElementById('scan-ifaces').textContent = `Available Interfaces: ${ifaces}`;
-      document.getElementById('pcap-ifaces').textContent = `Available Interfaces: ${ifaces}`;
+      
+      ifaces_list.forEach(iface => {
+        const option = document.createElement('option');
+        option.value = iface;
+        option.textContent = iface;
+        scan_select.appendChild(option);
+        pcap_select.appendChild(option.cloneNode(true));
+      });
+
 
       if (bsModal) {
         bsModal.show();
@@ -522,19 +768,24 @@ document.addEventListener("DOMContentLoaded", () => {
       const site = btn.dataset.site || '';
       const id = btn.dataset.id || '';
       const ifaces = btn.dataset.ifaces;
+      const api_key = btn.dataset.apikey || '';
       const ifaces_list = JSON.parse(ifaces);
-      const select = document.getElementById('prb-netmap-ifaces-select');
+      const netmap_select = document.getElementById('netvis-scan-ifaces-select');
+      const pcap_select = document.getElementById('netvis-pcap-ifaces-select');
 
-      // Fill modal fields
       document.getElementById('probeNetVisModalLabel').textContent = `${name} Network Visualizer`;
-      document.getElementById
-      // Additional setup can be done here
-
+      document.getElementById('netvis-probe-id').dataset.pid = id;
+      document.getElementById('netvis-probe-name').dataset.name = name;
+      document.getElementById('netvis-probe-site').dataset.site = site;
+      document.getElementById('netvis-probe-url').dataset.url = url;
+      document.getElementById('netvis-probe-ifaces').dataset.ifaces = ifaces_list.join(', ');
+      document.getElementById('netvis-probe-apikey').dataset.api_key = api_key;
       ifaces_list.forEach(iface => {
         const option = document.createElement('option');
         option.value = iface;
         option.textContent = iface;
-        select.appendChild(option);
+        netmap_select.appendChild(option);
+        pcap_select.appendChild(option.cloneNode(true));
       });
 
       if (netVisBsModal) {
@@ -629,454 +880,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  probeLoadNetMapButton.addEventListener("click", async function() {
-    const probeId = this.dataset.id;
-    
-
-    if (!probeId) {
-      alert("Probe ID not found!");
-      return;
-    }
-
-    try {
-      const resp = await fetch(`https://${mntrURL}/netscan/load?usr={{ cur_usr }}&id=${probeId}`, {method: "GET", credentials:"same-origin"});
-      if (resp.ok) {
-        const data = await resp.json();
-        loadNetwork(data.discovery_results);
-      } else {
-        alert("Failed to load network map!");
-      }
-    } catch (err) {
-      console.error("Error loading network map:", err);
-    }
-  });
-
-  probeRunNetScanButton.addEventListener("click", async function() {
-    const probeId = this.dataset.id;
-    const ifaceSelect = document.getElementById('prb-netmap-ifaces-select');
-    const scanTypeSelect = document.getElementById('prb-netmap-scan-select');
-    const selectedInterface = ifaceSelect.value;
-    const selectedScanType = scanTypeSelect.value;
-
-    if (!probeId) {
-      alert("Probe ID not found!");
-      return;
-    }
-
-    if (!selectedInterface) {
-      alert("Please select an interface to run the scan on.");
-      return;
-    }
-
-    const scanResults = await runNetworkScan(probeId, selectedInterface, selectedScanType);
-    if (scanResults) {
-      loadNetwork(scanResults.discovery_results);
-    }
-  });
-
-});
-
-</script>
-
-<script>
-  /**
- * Network Visualization Functions for Nmap Scan Results
- * Add this to the existing script section in probes.html
- */
-
-// Function to call the nmap scan API and get results
-async function runNetworkScan(probeId, interface) {
-  const spinner = document.createElement('div');
-  spinner.className = 'spinner-border text-primary';
-  spinner.setAttribute('role', 'status');
   
-  const networkDiv = document.getElementById('network');
-  networkDiv.innerHTML = '';
-  networkDiv.appendChild(spinner);
-  
-  try {
-    const response = await fetch(`/api/v1/probe/${probeId}/scan`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRFToken': csrf_token
-      },
-      body: JSON.stringify({
-        scan_type: 'full_scan',
-        interface: interface
-      })
-    });
-    
-    if (!response.ok) {
-      throw new Error(`Scan failed: ${response.statusText}`);
-    }
-    
-    const scanResults = await response.json();
-    return scanResults;
-  } catch (error) {
-    console.error('Network scan error:', error);
-    document.getElementById('notificationModalLabel').textContent = 'Scan Error';
-    document.getElementById('notif-modal-text').textContent = `Failed to run network scan: ${error.message}`;
-    notificationModal.show();
-    return null;
-  } finally {
-    networkDiv.innerHTML = '';
-  }
-}
-
-// Function to parse nmap JSON output and transform to vis-network format
-function parseNmapJson(nmapData) {
-  const devices = {};
-  
-  // Handle different nmap JSON structures
-  const hosts = nmapData.nmaprun?.host || nmapData.host || [];
-  const hostArray = Array.isArray(hosts) ? hosts : [hosts];
-  
-  hostArray.forEach((host, index) => {
-    // Skip hosts that are down
-    if (host.status?.state !== 'up') return;
-    
-    // Extract IP address
-    const ipAddr = host.address?.find(addr => addr['@addrtype'] === 'ipv4');
-    const macAddr = host.address?.find(addr => addr['@addrtype'] === 'mac');
-    
-    const ip = ipAddr?.['@addr'] || `unknown-${index}`;
-    const mac = macAddr?.['@addr'] || `${ip}-mac`;
-    const vendor = macAddr?.['@vendor'] || 'Unknown';
-    
-    // Extract open ports
-    const ports = host.ports?.port || [];
-    const portArray = Array.isArray(ports) ? ports : [ports];
-    const openPorts = portArray
-      .filter(port => port.state?.['@state'] === 'open')
-      .map(port => port['@portid'])
-      .join(', ');
-    
-    // Determine device role based on ports and OS detection
-    const role = determineDeviceRole(portArray, host.os, openPorts);
-    
-    // Extract hostname
-    const hostname = host.hostnames?.hostname?.['@name'] || ip;
-    
-    // Extract OS information
-    const osMatch = host.os?.osmatch?.[0];
-    const osName = osMatch?.['@name'] || 'Unknown OS';
-    const osAccuracy = osMatch?.['@accuracy'] || 'N/A';
-    
-    devices[mac] = {
-      mac: mac,
-      ip: ip,
-      vendor: vendor,
-      role: role,
-      open_ports: openPorts || 'none',
-      hostname: hostname,
-      os: osName,
-      os_accuracy: osAccuracy,
-      services: extractServices(portArray)
-    };
-  });
-  
-  return devices;
-}
-
-// Determine device role based on open ports and characteristics
-function determineDeviceRole(ports, osInfo, openPortsStr) {
-  const portArray = Array.isArray(ports) ? ports : [ports];
-  const portNumbers = portArray
-    .filter(p => p.state?.['@state'] === 'open')
-    .map(p => parseInt(p['@portid']));
-  
-  // Firewall detection
-  if (portNumbers.includes(443) && portNumbers.includes(22) && portNumbers.length < 10) {
-    const services = portArray.map(p => p.service?.['@name']?.toLowerCase() || '');
-    if (services.some(s => s.includes('firewall') || s.includes('vpn'))) {
-      return 'firewall';
-    }
-  }
-  
-  // Switch detection
-  if (portNumbers.includes(161) || portNumbers.includes(23)) {
-    const osClass = osInfo?.osclass?.[0]?.['@type']?.toLowerCase() || '';
-    if (osClass.includes('switch') || osClass.includes('router')) {
-      return 'switch';
-    }
-  }
-  
-  // Server detection
-  const serverPorts = [80, 443, 22, 21, 3306, 5432, 1433, 3389, 8080, 8443];
-  const hasServerPorts = portNumbers.some(p => serverPorts.includes(p));
-  if (hasServerPorts && portNumbers.length >= 3) {
-    return 'server';
-  }
-  
-  // Endpoint detection
-  if (portNumbers.length <= 5) {
-    return 'endpoint';
-  }
-  
-  return 'unknown';
-}
-
-// Extract service information from ports
-function extractServices(ports) {
-  const portArray = Array.isArray(ports) ? ports : [ports];
-  return portArray
-    .filter(p => p.state?.['@state'] === 'open')
-    .map(p => {
-      const portId = p['@portid'];
-      const service = p.service?.['@name'] || 'unknown';
-      const product = p.service?.['@product'] || '';
-      const version = p.service?.['@version'] || '';
-      return `${portId}/${service} ${product} ${version}`.trim();
-    })
-    .join(', ');
-}
-
-// Enhanced loadNetwork function with animation and better visualization
-async function loadNetworkFromScan(scanResults) {
-  const devices = parseNmapJson(scanResults);
-  const newNodes = [];
-  
-  nodes.clear();
-  edges = [];
-  existingNodes.clear();
-  
-  // Create nodes
-  for (let key in devices) {
-    const dev = devices[key];
-    if (!existingNodes.has(dev.mac)) {
-      newNodes.push(dev.mac);
-    }
-    
-    const nodeLabel = `${icons[dev.role]} ${dev.vendor}\n${dev.ip}\n${dev.hostname}`;
-    const nodeTitle = `
-      <b>Device Information</b><br/>
-      MAC: ${dev.mac}<br/>
-      IP: ${dev.ip}<br/>
-      Hostname: ${dev.hostname}<br/>
-      Vendor: ${dev.vendor}<br/>
-      OS: ${dev.os} (${dev.os_accuracy}% confidence)<br/>
-      Role: ${dev.role}<br/>
-      Open Ports: ${dev.open_ports}<br/>
-      Services: ${dev.services || 'none'}
-    `;
-    
-    nodes.add({
-      id: dev.mac,
-      label: nodeLabel,
-      title: nodeTitle,
-      group: dev.role,
-      shape: 'box',
-      font: { size: 12, multi: 'html' }
-    });
-    existingNodes.add(dev.mac);
-  }
-  
-  // Create edges based on network topology
-  const deviceArray = Object.values(devices);
-  const firewalls = deviceArray.filter(d => d.role === 'firewall');
-  const switches = deviceArray.filter(d => d.role === 'switch');
-  const servers = deviceArray.filter(d => d.role === 'server');
-  const endpoints = deviceArray.filter(d => d.role === 'endpoint');
-  
-  // Connect firewalls to switches
-  firewalls.forEach(fw => {
-    switches.forEach(sw => {
-      edges.push({
-        from: fw.mac,
-        to: sw.mac,
-        width: 3,
-        color: { color: '#ff6961' },
-        arrows: { to: { enabled: true } }
-      });
-    });
-  });
-  
-  // Connect switches to servers and endpoints
-  switches.forEach(sw => {
-    [...servers, ...endpoints].forEach(device => {
-      edges.push({
-        from: sw.mac,
-        to: device.mac,
-        dashes: device.role === 'endpoint',
-        arrows: { to: { enabled: true } }
-      });
-    });
-  });
-  
-  // If no switches, connect firewall directly to devices
-  if (switches.length === 0 && firewalls.length > 0) {
-    firewalls.forEach(fw => {
-      [...servers, ...endpoints].forEach(device => {
-        edges.push({
-          from: fw.mac,
-          to: device.mac,
-          dashes: device.role === 'endpoint',
-          arrows: { to: { enabled: true } }
-        });
-      });
-    });
-  }
-  
-  const data = { nodes: nodes, edges: edges };
-  const options = {
-    groups: {
-      firewall: {
-        color: { background: "#ff6961", border: "#ff0000" },
-        shape: 'diamond'
-      },
-      switch: {
-        color: { background: "#77dd77", border: "#00aa00" },
-        shape: 'star'
-      },
-      server: {
-        color: { background: "#779ecb", border: "#0066cc" },
-        shape: 'box'
-      },
-      endpoint: {
-        color: { background: "#fdfd96", border: "#cccc00" },
-        shape: 'ellipse'
-      },
-      unknown: {
-        color: { background: "#d3d3d3", border: "#808080" },
-        shape: 'dot'
-      }
-    },
-    edges: {
-      arrows: { to: { enabled: true, scaleFactor: 0.5 } },
-      smooth: { type: 'cubicBezier' }
-    },
-    physics: {
-      hierarchicalRepulsion: {
-        nodeDistance: 150,
-        centralGravity: 0.3
-      },
-      solver: "hierarchicalRepulsion",
-      stabilization: { iterations: 150 }
-    },
-    layout: {
-      hierarchical: {
-        direction: "UD",
-        sortMethod: "directed",
-        levelSeparation: 150,
-        nodeSpacing: 200
-      }
-    },
-    interaction: {
-      hover: true,
-      tooltipDelay: 100,
-      navigationButtons: true,
-      keyboard: true
-    }
-  };
-  
-  const networkContainer = document.getElementById('network');
-  network = new vis.Network(networkContainer, data, options);
-  
-  // Highlight new nodes with animation
-  newNodes.forEach(mac => {
-    const nodeElement = network.body.nodes[mac];
-    if (nodeElement) {
-      setTimeout(() => {
-        network.selectNodes([mac]);
-        setTimeout(() => network.unselectAll(), 2000);
-      }, 500);
-    }
-  });
-  
-  // Node click handler for detailed info
-  network.on("click", async function (params) {
-    if (params.nodes.length > 0) {
-      const nodeId = params.nodes[0];
-      const device = devices[nodeId];
-      if (device) {
-        showDeviceDetailsModal(device);
-      }
-    }
-  });
-  
-  // Detect and display network alerts
-  detectAlerts();
-  
-  return devices;
-}
-
-// Show device details in modal
-function showDeviceDetailsModal(device) {
-  const modal = document.getElementById('modal');
-  const modalBody = document.getElementById('modal-body');
-  
-  modalBody.innerHTML = `
-    <h3>Device Details: ${device.hostname}</h3>
-    <table class="table table-sm">
-      <tr><th>MAC Address</th><td>${device.mac}</td></tr>
-      <tr><th>IP Address</th><td>${device.ip}</td></tr>
-      <tr><th>Hostname</th><td>${device.hostname}</td></tr>
-      <tr><th>Vendor</th><td>${device.vendor}</td></tr>
-      <tr><th>Operating System</th><td>${device.os} (${device.os_accuracy}% confidence)</td></tr>
-      <tr><th>Role</th><td><span class="badge bg-info">${device.role}</span></td></tr>
-      <tr><th>Open Ports</th><td>${device.open_ports || 'none'}</td></tr>
-      <tr><th>Services</th><td>${device.services || 'none'}</td></tr>
-    </table>
-  `;
-  
-  modal.style.display = "block";
-}
-
-// Update the event listener for the scan button
-document.addEventListener("DOMContentLoaded", () => {
-  // ... existing code ...
-  
-  probeRunNetScanButton.addEventListener("click", async function() {
-    const probeIdElement = document.getElementById('probe-id-modal');
-    const interfaceSelect = document.getElementById('prb-netmap-ifaces-select');
-    
-    const probeId = probeIdElement?.dataset.pid;
-    const selectedInterface = interfaceSelect?.value;
-    
-    if (!probeId || !selectedInterface) {
-      document.getElementById('notificationModalLabel').textContent = 'Missing Information';
-      document.getElementById('notif-modal-text').textContent = 'Please select a probe and interface before scanning.';
-      notificationModal.show();
-      return;
-    }
-    
-    // Disable button during scan
-    this.disabled = true;
-    this.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Scanning...';
-    
-    try {
-      const scanResults = await runNetworkScan(probeId, selectedInterface);
-      
-      if (scanResults) {
-        await loadNetworkFromScan(scanResults);
-        
-        document.getElementById('notificationModalLabel').textContent = 'Scan Complete';
-        document.getElementById('notif-modal-text').textContent = 'Network scan completed successfully. Visualizing results...';
-        notificationModal.show();
-      }
-    } catch (error) {
-      console.error('Scan error:', error);
-    } finally {
-      // Re-enable button
-      this.disabled = false;
-      this.textContent = 'Scan Network';
-    }
-  });
-  
-  // Store probe info when modal opens
-  probeNetVisButtons.forEach(btn => {
-    btn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      const id = btn.dataset.id || '';
-      
-      // Store probe ID for later use
-      document.getElementById('probe-id-modal').dataset.pid = id;
-      probeRunNetScanButton.dataset.id = id;
-      probeLoadNetMapButton.dataset.id = id;
-    });
-  });
-});
 </script>
 
 {% endblock %}

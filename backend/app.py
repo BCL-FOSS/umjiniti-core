@@ -412,11 +412,8 @@ async def _receive() -> None:
 
                 case "prb_task_rslt":
                     final_output = ""
-                    probe_task_result_data = {'site': message['site'],
-                                              'name': message['name'],
-                                              'prb_id': message['prb_id'],
-                                              'alert_type': 'task_result',
-                                              'timestamp': datetime.now(tz=timezone.utc).isoformat()}
+                    message['alert_type'] = 'task_result'
+                    message['timestamp'] = datetime.now(tz=timezone.utc).isoformat()
                     
                     if message['llm'] == 'y':
                         logger.info(f"Received probe LLM analysis result message: {message}.")
@@ -441,18 +438,32 @@ async def _receive() -> None:
                         final_output+=summary_msg['output_text']
                         logger.info(final_output)
 
-                        probe_task_result_data['msg'] = final_output
+                        message['msg'] = final_output
                     else:
                         final_output+=message['task_output']
-                        probe_task_result_data['msg'] = final_output
+                        message['msg'] = final_output
 
-                    alert_id = f"alert:{probe_task_result_data['alert_type']}:{probe_task_result_data['prb_id']}:{probe_task_result_data['timestamp']}"
+                    message.pop('act')
+                    alert_id = f"alert:{message['alert_type']}:{message['prb_id']}:{message['timestamp']}"
+                    message['id'] = alert_id
 
-                    probe_task_result_data['id'] = alert_id
-
-                    if await cl_data_db.upload_db_data(id=alert_id, data=probe_task_result_data) > 0:
+                    if await cl_data_db.upload_db_data(id=alert_id, data=message) > 0:
                         logger.info(f"Task result data uploaded successfully with id: {alert_id}")
-                        await broker.publish(message=json.dumps(probe_task_result_data))
+                        await broker.publish(message=json.dumps(message))
+
+                case "prb_exec_rslt":
+                    logger.info(f"Received probe execution result message: {message}.")
+
+                    message['alert_type'] = 'exec_result'
+                    message['msg'] = message['task_output']
+                    message.pop('act')
+
+                    alert_id = f"alert:{message['alert_type']}:{message['task_type']}:{message['prb_id']}:{message['timestamp']}"
+                    message['id'] = alert_id
+                    
+                    if await cl_data_db.upload_db_data(id=alert_id, data=message) > 0:
+                        logger.info(f"Execution result data uploaded successfully with id: {alert_id}")
+                        await broker.publish(message=json.dumps(message))
 
                 case _:
                     pass
@@ -581,7 +592,7 @@ async def check_ip_ws():
         except RuntimeError:
             return None
         
-@app.websocket("/heartbeat/<string:probe_id>")
+@app.websocket("/v1/api/core/channels/probe/heartbeat/<string:probe_id>")
 @rate_exempt
 async def heartbeat(probe_id):
     try:
@@ -652,7 +663,7 @@ async def heartbeat(probe_id):
                 pass
     
         
-@app.websocket("/ws")
+@app.websocket("/v1/api/core/channels/users/ws")
 @rate_exempt
 async def ws():
     try:
@@ -761,7 +772,7 @@ async def ws():
                 logger.error(f"Error cancelling monitor task: {e}")
                 pass
 
-@app.route('/init', methods=['GET'])
+@app.route('/v1/api/core/probe/init', methods=['GET'])
 async def init():
     api_key = request.headers.get("X-UMJ-WFLW-API-KEY")
     usr = request.args.get('usr')
@@ -820,7 +831,7 @@ async def init():
     except Exception():
         return jsonify({'error': 'Error occurred'}), 400
     
-@app.route("/enroll", methods=['POST'])
+@app.route("/v1/api/core/probe/enroll", methods=['POST'])
 async def enroll():
     logger.info(request.args)
 
@@ -890,7 +901,7 @@ async def enroll():
     except Exception as e:
         return jsonify({f'error occurred: {e}'})
     
-@app.route('/delete', methods=['POST'])
+@app.route('/v1/api/core/probe/delete', methods=['POST'])
 async def delete():
     jwt_token = request.cookies.get("api_access_token")
     usr = request.args.get('usr')
@@ -953,7 +964,7 @@ async def delete():
     except Exception as e:
         return jsonify({f'error occurred: {e}'})
         
-@app.route('/flowrun', methods=['POST'])
+@app.route('/v1/api/core/flow/run', methods=['POST'])
 async def flowrun():
     jwt_token = request.cookies.get("api_access_token")
     usr = request.args.get('usr')
@@ -1017,7 +1028,7 @@ async def flowrun():
     except Exception as e:
         return jsonify({f'error occurred: {e}'})
         
-@app.route('/flowdelete', methods=['POST'])
+@app.route('/v1/api/core/flow/delete', methods=['POST'])
 async def flowdelete():
     jwt_token = request.cookies.get("api_access_token")
     usr = request.args.get('usr')
@@ -1080,7 +1091,7 @@ async def flowdelete():
     except Exception as e:
         return jsonify({f'error occurred: {e}'})
         
-@app.route('/flowsave', methods=['POST'])
+@app.route('/v1/api/core/flow/save', methods=['POST'])
 async def flowsave():
     jwt_token = request.cookies.get("api_access_token")
     usr = request.args.get('usr')
@@ -1141,7 +1152,7 @@ async def flowsave():
         logger.error(f"JWT invalid: {e}")
         return InvalidTokenError()
         
-@app.route('/flowload', methods=['POST'])
+@app.route('/v1/api/core/flow/load', methods=['POST'])
 async def flowload():
     jwt_token = request.cookies.get("api_access_token")
     usr = request.args.get('usr')
@@ -1202,7 +1213,7 @@ async def flowload():
         logger.error(f"JWT invalid: {e}")
         return InvalidTokenError()
     
-@app.route('/flowedit', methods=['POST'])
+@app.route('/v1/api/core/flow/edit', methods=['POST'])
 async def flowedit():
     jwt_token = request.cookies.get("api_access_token")
     usr = request.args.get('usr')
@@ -1262,7 +1273,7 @@ async def flowedit():
         logger.error(f"JWT invalid: {e}")
         return InvalidTokenError()
         
-@app.route('/resetapi', methods=['POST'])
+@app.route('/v1/api/core/user/resetapi', methods=['POST'])
 async def resetapi():
     jwt_token = request.cookies.get("access_token")
     sess_id = request.args.get('sess_id')
@@ -1340,7 +1351,7 @@ async def resetapi():
     except Exception:
         return jsonify("Error, occurred"), 400
     
-@app.route('/createapi', methods=['POST'])
+@app.route('/v1/api/core/user/createapi', methods=['POST'])
 async def createapi():
     jwt_token = request.cookies.get("access_token")
     sess_id = request.args.get('sess_id')
@@ -1427,8 +1438,8 @@ async def createapi():
     except Exception:
         return jsonify("Error, occurred"), 400
     
-@app.route('/notificationscfg', methods=['POST'])
-async def notificationscfg():
+@app.route('/v1/api/core/user/notifications', methods=['POST'])
+async def notifications():
     jwt_token = request.cookies.get("access_token")
     sess_id = request.args.get('sess_id')
 
@@ -1517,8 +1528,8 @@ async def notificationscfg():
     except Exception():
         return jsonify("Error, occurred"), 400
 
-@app.route('/alertscfg', methods=['POST'])
-async def alertscfg():
+@app.route('/v1/api/core/user/alerts', methods=['POST'])
+async def alerts():
     jwt_token = request.cookies.get("access_token")
     sess_id = request.args.get('sess_id')   
 

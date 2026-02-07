@@ -621,12 +621,14 @@
     const taskMinutes = document.getElementById('task-minutes');
     const taskDom = document.getElementById('task-dom');
 
-    const prbNetVisModal = document.getElementById('probeNetVisModal');
-    const prbDelModal = document.getElementById('probeDeleteModal');
-    const prbTskModal = document.getElementById('probeTaskConfigModal');
     const taskToggleInit = document.getElementById('task-toggle-init');
     const taskRescheduleInit = document.getElementById('task-reschedule-init');
     const taskDeleteInit = document.getElementById('task-delete-init');
+
+    const netvisRunTraceButton = document.getElementById('netvis-trace-run-btn');
+    const netvisRunPerfButton = document.getElementById('netvis-perf-run-btn');
+    const netvisRunScanButton = document.getElementById('netvis-scan-run-btn');
+    const netvisRunPcapButton = document.getElementById('netvis-pcap-run-btn');
 
     function appendMessage(chatWin, from, text) {
       chatWin.innerHTML+= `<p><strong>${from}</strong></p>`;
@@ -1354,6 +1356,195 @@
       notificationModal.show();
     });
 
+    netvisRunScanButton.addEventListener("click", async function() {
+      // Select the spinner element within the button
+      const spinner = this.querySelector('.spinner-grow');
+      // Select the text element within the button
+      const buttonText = this.querySelector('.netvis-scan-run-text');
+
+      // Show the spinner and hide the text
+      spinner.classList.remove('d-none');
+      spinner.classList.add('d-inline-block');
+      buttonText.textContent = "Running...";
+
+      // Disable the button
+      this.disabled = true;
+
+      const netvisScanIfaceSelect = document.getElementById('netvis-scan-ifaces-select');
+      const netvisScanSelect = document.getElementById('netvis-scan-select');
+      const netvisScanFpLimit = document.getElementById('netvis-scan-fplimit-switch');
+      const netvisScanDevidNoise = document.getElementById('netvis-scan-devid-noise-switch');
+      const netvisScanSnmpScripts = document.getElementById('netvis-scan-snmp-scripts');
+      const netvisScanPorts = document.getElementById('netvis-scan-ports');
+      const netvisScanTarget = document.getElementById('netvis-scan-target');
+      const netvisScanOptions = document.getElementById('netvis-scan-options');
+      const probe_id = document.getElementById('netvis-probe-id');
+      const probe_url = document.getElementById('netvis-probe-url');
+      const probe_api_key = document.getElementById('netvis-probe-apikey');
+      const scanType = netvisScanSelect.value;
+      const interface = netvisScanIfaceSelect.value;
+      const fpLimit = netvisScanFpLimit.checked;
+      const devidNoise = netvisScanDevidNoise.checked;
+      const snmpScripts = netvisScanSnmpScripts.value;
+      const ports = netvisScanPorts.value;
+      const target = netvisScanTarget.value;
+      const options = netvisScanOptions.value;
+
+      let param_data = {
+        interface: interface,
+        fp_limit: fpLimit,
+        devid_noise: devidNoise,
+        snmp_scripts: snmpScripts,
+        ports: ports,
+        target: target,
+        options: options  
+      };
+
+      new_scan_data = await runNetworkScan(probe_id.dataset.pid, probe_url.dataset.url, scanType, param_data, probe_api_key.dataset.api_key);
+
+      ws.send(JSON.stringify(new_scan_data));
+
+      // Hide the spinner and show the text
+      spinner.classList.remove('d-inline-block');
+      spinner.classList.add('d-none');
+      buttonText.textContent = "Run Scan";
+
+      // Enable the button
+      this.disabled = false;
+    });
+
+    netvisRunPcapButton.addEventListener("click", async function() {
+      const spinner = this.querySelector('.spinner-grow');
+      const buttonText = this.querySelector('.netvis-pcap-run-text');
+
+      // Show the spinner and hide the text
+      spinner.classList.remove('d-none');
+      spinner.classList.add('d-inline-block');
+      buttonText.textContent = "Running...";
+
+      // Disable the button
+      this.disabled = true;
+
+      const netvisPcapIfaceSelect = document.getElementById('netvis-pcap-ifaces-select');
+      const netvisPcapSelect = document.getElementById('netvis-pcap-select');
+      const netvisPcapCountTarget = document.getElementById('netvis-pcap-count-target');
+      const netvisPcapDurationTarget = document.getElementById('netvis-pcap-duration-target');
+      const netvisPcapRemoteHost = document.getElementById('netvis-pcap-remote-host');
+      const netvisPcapRemoteUser = document.getElementById('netvis-pcap-remote-user');
+      const netvisPcapRemotePass = document.getElementById('netvis-pcap-remote-pass');
+      const probe_id = document.getElementById('netvis-probe-id');
+      const probe_url = document.getElementById('netvis-probe-url');
+      const probe_api_key = document.getElementById('netvis-probe-apikey');
+      const captureMode = netvisPcapSelect.value;
+      const interface = netvisPcapIfaceSelect.value;
+      const countTarget = netvisPcapCountTarget.value;
+      const durationTarget = netvisPcapDurationTarget.value;
+      const remoteHost = netvisPcapRemoteHost.value;
+      const remoteUser = netvisPcapRemoteUser.value;
+      const remotePass = netvisPcapRemotePass.value;
+
+      let param_data = {
+        interface: interface,
+        count_target: countTarget,
+        duration_target: durationTarget,
+        remote_host: remoteHost,
+        remote_user: remoteUser,
+        remote_pass: remotePass
+      };
+
+      new_pcap_data = await runPacketCapture(probe_id.dataset.pid, probe_url.dataset.url, captureMode, param_data, probe_api_key.dataset.api_key);
+
+      ws.send(JSON.stringify(new_pcap_data));
+
+      spinner.classList.remove('d-inline-block');
+      spinner.classList.add('d-none');
+      buttonText.textContent = "Run Capture";
+
+      this.disabled = false;
+    });
+
+    netvisRunTraceButton.addEventListener("click", async function() {
+      const spinner = this.querySelector('.spinner-grow');
+      const buttonText = this.querySelector('.netvis-trace-run-text');
+
+      // Show the spinner and hide the text
+      spinner.classList.remove('d-none');
+      spinner.classList.add('d-inline-block');
+      buttonText.textContent = "Running...";
+
+      // Disable the button
+      this.disabled = true;
+
+      const netvisTraceSelect = document.getElementById('netvis-trace-select');
+      const netvisTraceTarget = document.getElementById('netvis-trace-target');
+      const netvisTraceDNSServer = document.getElementById('netvis-trace-dns-server');
+      const netvisTraceOptions = document.getElementById('netvis-trace-options');
+      const netvisTracePacketLen = document.getElementById('netvis-trace-packetlen');
+      const probe_id = document.getElementById('netvis-probe-id');
+      const probe_url = document.getElementById('netvis-probe-url');
+      const traceType = netvisTraceSelect.value;
+      const target = netvisTraceTarget.value;
+      const dnsServer = netvisTraceDNSServer.value;
+      const options = netvisTraceOptions.value;
+      const packetLen = netvisTracePacketLen.value; 
+
+      let param_data = {
+        target: target,
+        dns_server: dnsServer,
+        options: options,
+        packet_len: packetLen
+      };
+
+      new_trace_data = await runTraceroute(probe_id.dataset.pid, probe_url.dataset.url, traceType, param_data, probe_id.dataset.api_key);
+
+      ws.send(JSON.stringify(new_trace_data));
+
+      spinner.classList.remove('d-inline-block');
+      spinner.classList.add('d-none');
+      buttonText.textContent = "Run Trace";
+
+      this.disabled = false;
+
+    });
+
+    netvisRunPerfButton.addEventListener("click", async function() {
+      const spinner = this.querySelector('.spinner-grow');
+      const buttonText = this.querySelector('.netvis-perf-run-text');
+
+      // Show the spinner and hide the text
+      spinner.classList.remove('d-none');
+      spinner.classList.add('d-inline-block');
+      buttonText.textContent = "Running...";
+
+      // Disable the button
+      this.disabled = true;
+
+      const netvisPerfSelect = document.getElementById('netvis-perf-select');
+      const netvisPerfClientOptions = document.getElementById('netvis-perf-client-options');
+      const netvisPerfOptions = document.getElementById('netvis-perf-options');
+      const probe_id = document.getElementById('netvis-probe-id');
+      const probe_url = document.getElementById('netvis-probe-url');
+      const testType = netvisPerfSelect.value;
+      const clientOptions = netvisPerfClientOptions.value;
+      const options = netvisPerfOptions.value;
+
+      let param_data = {
+        client_options: clientOptions,
+        options: options
+      };
+
+      new_perf_data = await runPerformanceTest(probe_id.dataset.pid, probe_url.dataset.url, testType, param_data, probe_id.dataset.api_key);
+      
+      ws.send(JSON.stringify(new_perf_data));
+
+      spinner.classList.remove('d-inline-block');
+      spinner.classList.add('d-none');
+      buttonText.textContent = "Run Performance Test";
+      this.disabled = false;
+    });
+
+    
+
     chatInput.addEventListener("keypress", e => {
       if (e.key === "Enter") sendMessage();
     });
@@ -1386,6 +1577,7 @@
   <!-- Control Center for Soft Dashboard: parallax effects, scripts for the example pages etc -->
   <!--<script src="../assets/js/soft-ui-dashboard.min.js?v=1.1.0"></script>-->
   <script src="{{ url_for('static', filename='js/soft-ui-dashboard.min.js') }}" ></script>
+  <script src="{{ url_for('static', filename='js/network-visualization.js') }}"></script>
 </body>
 
 </html>
