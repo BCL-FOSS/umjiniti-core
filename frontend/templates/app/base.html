@@ -432,6 +432,7 @@
   <script src="{{ url_for('static', filename='js/plugins/smooth-scrollbar.min.js') }}" ></script>
   <!-- Plotly CDN -->
   <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+  <script src="{{ url_for('static', filename='js/network-visualization.js') }}"></script>
   <script type="text/javascript">
     var csrf_token = "{{ csrf_token() }}";
 
@@ -444,7 +445,7 @@
     });
   </script>
 
-   <script type="text/javascript">
+  <script type="text/javascript">
     let currentUser = "{{ user }}";
     const wsURLMon = "{{ ws_url }}";
     const curUsrID = "{{ cur_usr }}"
@@ -606,7 +607,7 @@
 
     connectWebSocket();
 
-    let selectedValue = document.getElementById("mcp-dropdown").value;
+    let selectedValue = document.getElementById("mcp-dropdown");
     const chatInput = document.getElementById("chat-input");
     const chatSend = document.getElementById("chat-send");
     const smartbotInitSwitch = document.getElementById("smartbotInitSwitch");
@@ -679,7 +680,7 @@
       buttonText.textContent = "Processing...";
       smartbotSend.disabled = true;
                 
-      if (!selectedValue || !chatInput.value.trim()) {
+      if (!selectedValue.value || !chatInput.value.trim()) {
         alert('Make a probe selection or enter a chat query.');
         spinner.classList.remove('d-inline-block');
         spinner.classList.add('d-none');
@@ -697,15 +698,16 @@
 
       ws.send(JSON.stringify({
         act: "llm",
-        url: selectedValue,
+        url: selectedValue.value,
         usr: currentUser,
+        prb_id: selectedValue.dataset.pid,
         from: "user",
         msg: msg,
         usr_id: curUsrID
       }));
 
-      const chatWin = document.getElementById(`chat-${selectedValue}`);
-      showChat(selectedValue);
+      const chatWin = document.getElementById(`chat-${selectedValue.value}`);
+      showChat(selectedValue.value);
       appendUserMessage(chatWin, "user", msg);
     }
 
@@ -1552,14 +1554,16 @@
     // chat selection
     document.querySelectorAll("#mcp-list li").forEach(li => {
       li.addEventListener("click", () => {
-        selectedValue = li.dataset.value;
-        showChat(selectedValue);
-        document.getElementById("mcp-dropdown").value = selectedValue;
+        selectedValue.value = li.dataset.value;
+        showChat(selectedValue.value);
+        document.getElementById("mcp-dropdown").value = selectedValue.value;
+        selectedValue.dataset.pid = li.dataset.pid;
       });
     });
     document.getElementById("mcp-dropdown").addEventListener("change", e => {
-      selectedValue = e.target.value;
-      showChat(selectedValue);
+      selectedValue.value = e.target.value;
+      selectedValue.dataset.pid = e.target.selectedOptions[0].dataset.pid;
+      showChat(selectedValue.value);
     });
   </script>
  
@@ -1577,7 +1581,6 @@
   <!-- Control Center for Soft Dashboard: parallax effects, scripts for the example pages etc -->
   <!--<script src="../assets/js/soft-ui-dashboard.min.js?v=1.1.0"></script>-->
   <script src="{{ url_for('static', filename='js/soft-ui-dashboard.min.js') }}" ></script>
-  <script src="{{ url_for('static', filename='js/network-visualization.js') }}"></script>
 </body>
 
 </html>

@@ -23,7 +23,7 @@
                   <label for="mcp-dropdown" class="form-label">Select MCP Option:</label>
                   <select id="mcp-dropdown" class="form-select">
                     {% for opt in options.values() %}
-                      <option value="{{ opt.url }}/llm/mcp">{{ opt.name }}</option>
+                      <option value="{{ opt.url }}/llm/mcp" data-pid="{{ opt.prb_id }}">{{ opt.name }}</option>
                     {% endfor %}
                   </select>
                 </div>
@@ -32,7 +32,7 @@
                 <div style="position: relative; height: 400px; overflow-y:auto;" id="mcp-list-container">
                   <ul class="list-unstyled mb-0" id="mcp-list">
                     {% for opt in options.values() %}
-                      <li class="p-2 border-bottom" data-value="{{ opt.url }}/llm/mcp">
+                      <li class="p-2 border-bottom" data-value="{{ opt.url }}/llm/mcp" data-pid="{{ opt.prb_id }}">
                         <a href="#!" class="d-flex justify-content-between">
                           <div class="d-flex flex-row">
                             <img src="https://mdbcdn.b-cdn.net/img/Photos/new-templates/bootstrap-chat/ava1-bg.webp"

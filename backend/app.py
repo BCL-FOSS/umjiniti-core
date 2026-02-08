@@ -30,6 +30,7 @@ from tzlocal import get_localzone
 from ai.smartbot.utils.EmailAlert import EmailAlert
 from onetimesecret import OneTimeSecretCli
 from ai.smartbot.utils.EmailSenderHandler import EmailSenderHandler
+import uuid
 
 # Session and Auth Redis DB init
 cl_sess_db = RedisDB(hostname=os.environ.get('CLIENT_SESS_DB'), 
@@ -171,9 +172,9 @@ async def _receive() -> None:
                     await cl_auth_db.connect_db()
                     await cl_data_db.connect_db()
                     
-                    if await cl_auth_db.get_all_data(match=f'*uid:{message["usr"]}*', cnfrm=True) is True:
+                    if await cl_data_db.get_all_data(match=f'*uid:{message["usr"]}*', cnfrm=True) is True:
                         
-                        probes = await cl_data_db.get_all_data(match=f"prb:{message['usr']}*")
+                        probes = await cl_data_db.get_all_data(match=f"*{message['prb_id']}*")
 
                         logger.info(probes)
 
@@ -881,11 +882,11 @@ async def enroll():
         # Adopt new probe
         adopted_probe_data = await request.get_json()
         logger.info(adopted_probe_data)
-        prb_db_id = f"prb:{adopted_probe_data['site']}:{adopted_probe_data['prb_id']}"
-        adopted_probe_data['db_id'] = prb_db_id
+        
+        adopted_probe_data['db_id'] = f"prb:{adopted_probe_data['site']}:{str(uuid.uuid4())}:{adopted_probe_data['prb_id']}"
         logger.info(adopted_probe_data)
 
-        if await cl_data_db.upload_db_data(id=prb_db_id, data=adopted_probe_data) > 0:
+        if await cl_data_db.upload_db_data(id=adopted_probe_data['db_id'], data=adopted_probe_data) > 0:
             return jsonify({'status':'probe adopted'})
         else:
             return jsonify({'status':'probe adoption failed'}), 400
