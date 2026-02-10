@@ -25,12 +25,12 @@
           <li>
             <div class="dropdown">
               <button class="btn btn-secondary dropdown-toggle" type="button" id="flowDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                Choose Main Probe
+                Select probe flow will run on:
               </button>
               <ul class="dropdown-menu" aria-labelledby="flowDropdown">
                 {% for probe in all_probes.values() %}
                   <li>
-                    <div class="dropdown-item" value="{{ probe.prb_id }}">{{ probe.name }}:{{ probe.url }}</div>
+                    <div class="dropdown-item" value="{{ probe.prb_id }}">Site: {{ probe.site }} | Name: {{ probe.name }}</div>
                   </li>
                 {% endfor %}
               </ul>
@@ -39,32 +39,28 @@
           <li>
             <div class="dropdown">
               <button class="btn btn-secondary dropdown-toggle" type="button" id="actionDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                Add Action Node
+                Network Tools
               </button>
               <ul class="dropdown-menu" aria-labelledby="actionDropdown">
                 <li><div class="dropdown-item drag-drawflow" draggable="true" ondragstart="drag(event)" data-node="slack"><i class="fab fa-slack"></i>Slack Alert</div></li>
                 <li><div class="dropdown-item drag-drawflow" draggable="true" ondragstart="drag(event)" data-node="jsm"><i class="fab fa-telegram"></i>Jira Service Management Alert</div></li>
                 <li><div class="dropdown-item drag-drawflow" draggable="true" ondragstart="drag(event)" data-node="email">Email Alert</div></li>
+                <li><h6 class="dropdown-header">Probe Endpoints</h6></li>
                 <li><div class="dropdown-item drag-drawflow" draggable="true" ondragstart="drag(event)" data-node="speedtest"><i class="fas fa-code-branch"></i>Network Speedtest</div></li>
                 <li><div class="dropdown-item drag-drawflow" draggable="true" ondragstart="drag(event)" data-node="traceroute"><i class="fas fa-fill"></i>Traceroute</div></li>
                 <li><div class="dropdown-item drag-drawflow" draggable="true" ondragstart="drag(event)" data-node="traceroute_dns"><i class="fas fa-mouse"></i>DNS Traceroute</div></li>
-                <li><h6 class="dropdown-header">Probe Endpoints</h6></li>
-                {% for probe in all_probes.values() %}
-                  <li>
-                    <div class="dropdown-item drag-drawflow" draggable="true" ondragstart="drag(event)" data-node="{{ probe.prb_id }}"><i class="fas fa-mouse"></i>{{ probe.name }}</div>
-                  </li>
-                {% endfor %}
+                
               </ul>
             </div>
           </li>
           <li>
             <div class="dropdown">
               <button class="btn btn-secondary dropdown-toggle" type="button" id="probeDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                Add Probe Action Node
+                Remote Probes
               </button>
               <ul class="dropdown-menu" aria-labelledby="probeDropdown">
                 {% for probe in all_probes.values() %}
-                  <li><div class="dropdown-item drag-drawflow" draggable="true" ondragstart="drag(event)" data-node="{{ probe.db_id }}" value="{{ probe.db_id }}"><i class="fas fa-mouse"></i> {{ probe.name }}</div></li>
+                  <li><div class="dropdown-item drag-drawflow" draggable="true" ondragstart="drag(event)" data-node="{{ probe.prb_id }}" value="{{ probe.prb_id }}"><i class="fas fa-mouse"></i>Site: {{ probe.site }} | Name: {{ probe.name }}</div></li>
                 {% endfor %}
               </ul>
             </div>
@@ -89,20 +85,32 @@
 
   <script>
     const mntrURL = "{{ mntr_url }}";
+    let nodeProbeCounter = 0;
+    let currentProbeNodes = {};
+    let currentSelectedProbe = null;
+    const notificationModal = new bootstrap.Modal(document.getElementById('notificationModal'));
     var id = document.getElementById("drawflow");
     const editor = new Drawflow(id);
     editor.reroute = true;
-    
     editor.start();
     //editor.import(dataToImport);
 
     // Events!
     editor.on('nodeCreated', function(id) {
       console.log("Node created " + id);
+      currentSelectedProbe = editor.getNodeFromId(id);
+      if (currentSelectedProbe.data.type === 'probe') {
+        nodeProbeCounter++;
+        currentProbeNodes[id] = currentSelectedProbe;
+      }
     })
 
     editor.on('nodeRemoved', function(id) {
       console.log("Node removed " + id);
+      if (currentProbeNodes.hasOwnProperty(id)) {
+        delete currentProbeNodes[id];
+        nodeProbeCounter--;
+      }
     })
 
     editor.on('nodeSelected', function(id) {
@@ -164,30 +172,6 @@
       });
     });
 
-    // Save flow
-    document.getElementById('save-flow').addEventListener('click', async ()=>{
-      if (selectedFlow === null){
-        alert("Select a main probe for this flow...");
-      } else {
-        let savename = prompt("Name your workflow:");
-
-        if (savename !== null && savename !== "") {
-        const data = editor.export();
-        alert(savename);
-        const flow = JSON.stringify(data, null,4)
-        const payload = { id: `${selectedFlow}-flow`, flow: flow, probe: selectedFlow, unm: "{{ user }}" , name: savename}
-        //const resp = await fetch(`https://${mntrURL}/flowsave?usr={{ cur_usr }}`, {method:'POST', headers:{'Content-Type':'application/json', 'X-ACCESS-TOKEN':'{{ jwt_token }}'}, body:JSON.stringify(payload)})
-        const resp = await fetch(`https://${mntrURL}/flowsave?usr={{ cur_usr }}`, {method:'POST', credentials: "same-origin", body:JSON.stringify(payload)})
-        const j = await resp.json()
-        alert('Save Result: '+JSON.stringify(j));
-        } else if (savename === "" || savename === null) {
-          alert("You didn't enter anything.");
-        } else {
-          alert("You cancelled the input.");
-        }
-      }
-    });
-
     /* Mouse and Touch Actions */
 
     var elements = document.getElementsByClassName('drag-drawflow');
@@ -238,19 +222,147 @@
       pos_y = pos_y * ( editor.precanvas.clientHeight / (editor.precanvas.clientHeight * editor.zoom)) - (editor.precanvas.getBoundingClientRect().y * ( editor.precanvas.clientHeight / (editor.precanvas.clientHeight * editor.zoom)));
 
       if (typeof name === "string" && name.startsWith("prb:")) {
-        const probeName = name.split(":")[1];
+        if (nodeProbeCounter === 5) {
+          document.getElementById('notificationModalLabel').textContent = "Probe Limit Reached";
 
-        var probe = `
-          <div>
-            <div class="title-box">Probe Action</div>
-            <div class="box">
-              <p>Probe: ${probeName}</p>
-            </div>
-          </div>
-        `;
-        data = { type: 'probe', name: name };
-        editor.addNode('probe', 1, 0, pos_x, pos_y, 'probe', data, probe);
+          document.getElementById('notif-modal-text').textContent = `You have reached the maximum number of probes allowed. Please remove a probe before adding another one.`;
 
+          notificationModal.show();
+          return false;
+        } else {
+          var probe = `
+              <div class="title-box">Remote Probe</div>
+              <div class="box" style="background-color: #8b7da8;>
+                <nav>
+                  <div class="nav nav-tabs" id="nav-tab" role="tablist">
+                    <button class="nav-link active" id="nav-trace-tab" data-bs-toggle="tab" data-bs-target="#nav-trace" type="button" role="tab" aria-controls="nav-trace" aria-selected="true">Path Trace</button>
+                    <button class="nav-link" id="nav-perf-tab" data-bs-toggle="tab" data-bs-target="#nav-perf" type="button" role="tab" aria-controls="nav-perf" aria-selected="false">Performance Test</button>
+                    <button class="nav-link" id="nav-scans-tab" data-bs-toggle="tab" data-bs-target="#nav-scans" type="button" role="tab" aria-controls="nav-scans" aria-selected="false">Scans</button>
+                    <button class="nav-link" id="nav-pcap-tab" data-bs-toggle="tab" data-bs-target="#nav-pcap" type="button" role="tab" aria-controls="nav-pcap" aria-selected="false">Packet Capture</button>
+                  </div>
+                </nav>
+                <div class="tab-content" id="nav-tabContent">
+                  <div class="tab-pane fade show active" id="nav-trace" role="tabpanel" aria-labelledby="nav-trace-tab">
+                    <form method="post">
+                      <div class="form-group mb-3">
+                        <label for="tracetool">Select path trace tool:</label>
+                        <select class="form-select" id="tracetool" df-tracetool>
+                          <option value="trcrt">Traceroute</option>
+                          <option value="dnstrcrt">DNS Traceroute</option>
+                        </select>
+                      </div>
+                      <div class="form-group mb-3">
+                        <div class="row mb-3">
+                          <div class="col-6">
+                            <label for="target">Enter target for path trace:</label>
+                            <input type="text" class="form-control" id="target" placeholder="Enter target IP or FQDN..." df-target>
+                            
+                          </div>
+                          <div class="col-6">
+                            <label for="dnstrcserver">Enter DNS server for test (optional):</label>
+                            <input type="text" placeholder="Enter DNS server for test if necessary (default 8.8.8.8)" df-dnstrcserver>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="form-group mb-3">
+                        <div class="row mb-3">
+                          <div class="col-6">
+                            <label for="packetlen">Set size of the probe packet (optional):</label>
+                            <input type="text" class="form-control" id="packetlen" placeholder="Enter preferred packet length..." df-packetlen>
+                          </div>
+                          <div class="col-6">
+                            <label for="trcoptions">Enter additional command options (optional):</label>
+                            <input type="text" class="form-control" id="trcoptions" placeholder="Enter cmd options if necessary..." df-trcoptions>
+                          </div>
+                        </div>
+                      </div>
+                    </form>
+                  </div>
+                  <div class="tab-pane fade" id="nav-perf" role="tabpanel" aria-labelledby="nav-perf-tab">
+                    <form method="post">
+                      <div class="form-group mb-3">
+                        <label for="perftool">Select performance test tool:</label>
+                        <select class="form-select" id="perftool" df-perftool>
+                          <option value="speedtest">Network Speedtest</option>
+                        </select>
+                      </div>
+                      <div class="form-group mb-3">
+                        <div class="row mb-3">
+                          <div class="col-6">
+                            <label for="spdcserver">Enter speedtest server IP/FQDN (required if running as client):</label>
+                            <input type="text" class="form-control" id="spdcserver" placeholder="Enter IP/FQDN of speedtest server if running as client (required)" df-spdcserver>
+                          </div>
+                          <div class="col-6">
+                            <label for="spdchost">Enter IP address of interface to bind to (optional):</label>
+                            <input type="text" placeholder="Enter IP address of interface to bind to..." df-spdchost>
+                          </div>
+                        </div>
+                      </div>
+                    </form>
+                  </div>
+                  <div class="tab-pane fade" id="nav-scans" role="tabpanel" aria-labelledby="nav-scans-tab">
+                    <form method="post">
+                      <div class="form-group mb-3">
+                        <label for="scantool">Select scan tool:</label>
+                        <select class="form-select" id="scantool" df-scantool>
+                          <option value="scan_arp">ARP Scan</option>
+                          <option value="scan_custom">Custom Scan</option>
+                          <option value="scan_dev_id">Device ID Scan</option>
+                          <option value="scan_dev_fngr">Device Fingerprint Scan</option>
+                          <option value="scan_full">Full Scan</option>
+                          <option value="scan_snmp">SNMP Scan</option>
+                          <option value="scan_port">Port Scan</option>
+                        </select>
+                      </div>
+                      <div class="form-group mb-3">
+                        <div class="row mb-3">
+                          <div class="col-6">
+                            <label for="scantarget">Enter target for scan:</label>
+                            <input type="text" class="form-control" id="scantarget" placeholder="Enter target IP or FQDN..." df-scantarget>
+                          </div>
+                          <div class="col-6">
+                            <label for="scanoptions">Enter additional command options (optional):</label>
+                            <input type="text" class="form-control" id="scanoptions" placeholder="Enter cmd options if necessary..." df-scanoptions>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="form-group mb-3">
+                        <div class="row mb-3">
+                          <div class="col-6">
+                            <label for="devidswitch">Reduce device ID scan noise</label>
+                            <select class="form-select" id="devidswitch" df-devidswitch>
+                              <option value="on">on</option>
+                              <option value="off">off</option>
+                            </select>
+                          </div>
+                          <div class="col-6">
+                            <label for="scanportend">Limit device fingerprint scan</label>
+                            <select class="form-select" id="fngrscanlimit" df-fngrscanlimit>
+                              <option value="on">on</option>
+                              <option value="off">off</option>
+                            </select>
+                          </div>
+                        </div>
+                      </div>
+                    </form>
+                  </div>
+                  <div class="tab-pane fade" id="nav-pcap" role="tabpanel" aria-labelledby="nav-pcap-tab">
+                    <form method="post">
+                      <div class="form-group mb-3">
+                        <label for="pcaptool">Select packet capture tool:</label>
+                        <select class="form-select" id="pcaptool" df-pcaptool>
+                          <option value="tcpdump">Tcpdump</option>
+                          <option value="tshark">Tshark</option>
+                        </select>
+                      </div>
+                    </form>
+                  </div>              
+              </div>
+              `;
+          data = { type: 'probe', id: name };
+          editor.addNode('probe', 0, 3, pos_x, pos_y, 'probe', data, probe);
+
+        }
       } else {
         switch (name) {
           case 'slack':
@@ -334,36 +446,6 @@
               `;
             data = {type: 'tool', name: name}
             editor.addNode(name, 0, 3, pos_x, pos_y, name, data, tool );
-            break;
-          default: 
-            var mcp = `
-              <div style="background-color: #8b7da8;>
-                <div class="title-box">Umjiniti Probe </div>
-                <div class="box" style="background-color: #8b7da8;">
-                  <p>select tool</p>
-                  <select df-mcptool>
-                    <option value="iperf_c">Speedtest Client</option>
-                    <option value="iperf_s">Speedtest Server</option>
-                    <option value="trct_tar">Traceroute Target</option>
-                    <option value="dnstrct_tar">DNS Traceroute Target</option>
-                  </select>
-                  <p>speedtest server settings</p>
-                  <input type="text" placeholder="Enter IP address of interface to bind to..." df-spdshost>
-                  <input type="text" placeholder="Enter cmd options if necessary..." df-spdsoptions>
-                  <p>speedtest client settings</p>
-                  <input type="text" placeholder="Enter IP/FQDN of speedtest server if running as client (required)" df-spdcserver>
-                  <input type="text" placeholder="Enter IP address of interface to bind to..." df-spdchost>
-                  <input type="text" placeholder="Enter cmd options if necessary..." df-spdcoptions>
-                  <p>traceroute settings</p>
-                  <input type="text" placeholder="Enter cmd options if necessary" df-trcoptions>
-                  <input type="text" placeholder="Set size of the probe packet" df-packetlen>
-                  <input type="text" placeholder="Enter DNS server for test if necessary (default 8.8.8.8)" df-dnstrcserver>
-                </div>
-              </div>
-              
-              `;
-            data = {type: 'mcp', name: name}
-            editor.addNode(name, 0, 3, pos_x, pos_y, name, data, mcp );
             break;
         }
 

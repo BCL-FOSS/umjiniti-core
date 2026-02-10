@@ -1600,6 +1600,30 @@
       ws.send(perf_data);
     });
 
+    // Save flow
+    document.getElementById('save-flow').addEventListener('click', async ()=>{
+      if (selectedFlow === null){
+        alert("Select a main probe for this flow...");
+      } else {
+        let savename = prompt("Name your workflow:");
+
+        if (savename !== null && savename !== "") {
+        const data = editor.export();
+        alert(savename);
+        const flow = JSON.stringify(data, null,4)
+        const payload = { id: `${selectedFlow}-flow`, flow: flow, probe: selectedFlow, unm: "{{ user }}" , name: savename}
+        //const resp = await fetch(`https://${mntrURL}/flowsave?usr={{ cur_usr }}`, {method:'POST', headers:{'Content-Type':'application/json', 'X-ACCESS-TOKEN':'{{ jwt_token }}'}, body:JSON.stringify(payload)})
+        const resp = await fetch(`https://${mntrURL}/flowsave?usr={{ cur_usr }}`, {method:'POST', credentials: "same-origin", body:JSON.stringify(payload)})
+        const j = await resp.json()
+        alert('Save Result: '+JSON.stringify(j));
+        } else if (savename === "" || savename === null) {
+          alert("You didn't enter anything.");
+        } else {
+          alert("You cancelled the input.");
+        }
+      }
+    });
+
     chatInput.addEventListener("keypress", e => {
       if (e.key === "Enter") sendMessage();
     });

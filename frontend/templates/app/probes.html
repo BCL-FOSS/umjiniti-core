@@ -681,7 +681,7 @@
   const table = document.querySelector("#probeTable");
   const rows = table.querySelectorAll("tbody tr");
   const mntrURL = "{{ mntr_url }}";
-  const notificationModal = new bootstrap.Modal(document.getElementById('notificationModal'), {});
+  const notificationModal = new bootstrap.Modal(document.getElementById('notificationModal'));
 
   // Handle row selection
   rows.forEach(row => {
