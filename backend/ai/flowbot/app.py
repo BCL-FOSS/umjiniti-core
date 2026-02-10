@@ -8,8 +8,8 @@ import json
 from typing import Dict, Any, List
 
 from init_app import app
-from RAGEngine import RAGEngine
-from NetworkToolParser import NetworkToolParser
+from utils.RAGEngine import RAGEngine
+from utils.NetworkToolParser import NetworkToolParser
 from utils.RedisDB import RedisDB
 
 logging.basicConfig(level=logging.INFO)

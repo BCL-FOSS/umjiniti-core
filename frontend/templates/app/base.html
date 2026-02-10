@@ -454,18 +454,6 @@
     const prbExec = document.getElementById("prbExecSwitch");
     let ws = new WebSocket(wsURLMon);
     const notificationModal = new bootstrap.Modal(document.getElementById('notificationModal'));
-    // close all modals but the one you want to open
-    const $modals = document.querySelectorAll('.modal');
-    $modals.forEach(modal => {
-      modal.addEventListener('show.bs.modal', function() {
-        $modals.forEach(_modal => {
-          let currentModal = bootstrap.Modal.getInstance(_modal);
-          if (this !== _modal && currentModal) {
-            currentModal.hide();
-          }
-        });
-      });
-    });
 
     async function connectWebSocket() {
 
@@ -1629,6 +1617,18 @@
       selectedValue.value = e.target.value;
       selectedValue.dataset.pid = e.target.selectedOptions[0].dataset.pid;
       showChat(selectedValue.value);
+    });
+    // close all modals but the one you want to open
+    const $modals = document.querySelectorAll('.modal');
+    $modals.forEach(modal => {
+      modal.addEventListener('show.bs.modal', function() {
+        $modals.forEach(_modal => {
+          let currentModal = bootstrap.Modal.getInstance(_modal);
+          if (this !== _modal && currentModal) {
+            currentModal.hide();
+          }
+        });
+      });
     });
   </script>
  

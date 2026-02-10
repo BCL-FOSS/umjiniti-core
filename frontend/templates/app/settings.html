@@ -53,14 +53,9 @@
             </div>
           </div>
           <div class="d-flex align-items-center">
-            <div class="dropdown">
-              <button class="btn btn-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                API Key Management
-              </button>
-              <div class="dropdown-menu">
-                <a class="dropdown-item btn btn-outline-primary" id="add-api">Generate</a>
-                <a class="dropdown-item btn btn-outline-secondary" id="reset-api">Reset</a>
-              </div>
+            <div class="input-group mb-3">
+              <a class="dropdown-item btn btn-outline-primary" id="add-api">Generate</a>
+              <a class="dropdown-item btn btn-outline-secondary" id="reset-api">Reset</a>
             </div>
           </div>
         </div>
@@ -151,14 +146,16 @@
     <div class="modal-content">
       <div class="modal-header">
         <h1 class="modal-title fs-5" id="staticBackdropLabel">Generate API Key</h1>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
         Are you sure you want to create a new API key? An OTP link will be sent to your registered email to retrieve the key.
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-        <button type="button" class="btn btn-primary" id="api-create">Generate </button>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="api-create-modal-close">Close</button>
+        <button type="button" class="btn btn-primary" id="api-create">
+          <span class="spinner-grow spinner-grow-sm d-none" role="status" aria-hidden="true" id="api-create-spinner"></span>
+          <span class="api-create-text">Generate</span>
+        </button>
       </div>
     </div>
   </div>
@@ -169,14 +166,16 @@
     <div class="modal-content">
       <div class="modal-header">
         <h1 class="modal-title fs-5" id="staticBackdropLabel">Refresh API Key</h1>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
         Are you sure you want to refresh your API key? This action will invalidate your current key and generate a new one.
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-        <button type="button" class="btn btn-primary" id="api-refresh">Refresh</button>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="api-refresh-modal-close">Close</button>
+        <button type="button" class="btn btn-primary" id="api-refresh">
+          <span class="spinner-grow spinner-grow-sm d-none" role="status" aria-hidden="true" id="api-refresh-spinner"></span>
+          <span class="api-refresh-text">Refresh</span>
+        </button>
       </div>
     </div>
   </div>
@@ -187,7 +186,6 @@
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title" id="alrtEmailModalLabel">Add Email Credentials</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
           <form method="POST">
@@ -198,8 +196,11 @@
           </form> 
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-        <button type="button" class="btn btn-primary" id="email-create">Create Email Contact</button>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="email-modal-close">Close</button>
+        <button type="button" class="btn btn-primary" id="email-create">
+          <span class="spinner-grow spinner-grow-sm d-none" role="status" aria-hidden="true" id="email-create-spinner"></span>
+          <span class="email-create-text">Create Email Contact</span>
+        </button>
       </div>
     </div>
   </div>
@@ -210,7 +211,6 @@
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title" id="alrtJiraModalLabel">Add Jira Credentials</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
           <form method="POST">
@@ -229,8 +229,11 @@
           </form> 
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-        <button type="button" class="btn btn-primary" id="jira-create">Create Jira Contact</button>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="jira-modal-close">Close</button>
+        <button type="button" class="btn btn-primary" id="jira-create">
+          <span class="spinner-grow spinner-grow-sm d-none" role="status" aria-hidden="true" id="jira-create-spinner"></span>
+          <span class="jira-create-text">Create Jira Contact</span>
+        </button>
       </div>
     </div>
   </div>
@@ -241,7 +244,6 @@
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title" id="alrtSlackModalLabel">Add Slack Credentials</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
           <form method="POST">
@@ -256,8 +258,11 @@
           </form> 
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-        <button type="button" class="btn btn-primary" id="slack-create">Create Slack Contact</button>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="slack-modal-close">Close</button>
+        <button type="button" class="btn btn-primary" id="slack-create">
+          <span class="spinner-grow spinner-grow-sm d-none" role="status" aria-hidden="true" id="slack-create-spinner"></span>
+          <span class="slack-create-text">Create Slack Contact</span>
+        </button>
       </div>
     </div>
   </div>
@@ -285,9 +290,28 @@
     const emailModal = new bootstrap.Modal(document.getElementById('alrtEmailModal'));
 
     createEmailBtn.addEventListener('click', async function() {
-      emailModal.hide();
-
       const email = document.getElementById('email-id').value;
+
+      if (!email) {
+        document.getElementById('notificationModalLabel').textContent = "Invalid Email";
+
+        document.getElementById('notif-modal-text').textContent = "Please enter a valid email address.";
+
+        notificationModal.show();
+        return;
+      }
+
+      const emailCreateSpinner = document.getElementById('email-create-spinner');
+      const emailCreateText = document.querySelector('.email-create-text');
+      const emailModalCloseBtn = document.getElementById('email-modal-close');
+
+      emailCreateSpinner.classList.remove('d-none');
+      emailCreateSpinner.classList.add('d-inline-block');
+      emailCreateText.textContent = 'Creating...';
+      createEmailBtn.disabled = true;
+      emailModalCloseBtn.disabled = true;
+
+      
 
       resp = await fetch(`https://${mntrURL}/v1/api/core/user/notifications?sess_id={{ auth_id }}`, {
         method: 'POST',
@@ -302,20 +326,57 @@
       });
 
       if (resp.status === 200) {
-        alert("Email contact has been added successfully.");
-        location.reload();
+        emailCreateSpinner.classList.remove('d-inline-block');
+        emailCreateSpinner.classList.add('d-none');
+        emailCreateText.textContent = 'Create Email Contact';
+        createEmailBtn.disabled = false;
+        emailModalCloseBtn.disabled = false;
+
+        document.getElementById('notificationModalLabel').textContent = "Email Contact Added";
+
+        document.getElementById('notif-modal-text').textContent = `Email contact ${email} has been added successfully. You can set it as primary or delete it from the contacts list.`;
+
+        notificationModal.show();
       } else {
-        alert("Failed to add email contact. Please try again.");
+        emailCreateSpinner.classList.remove('d-inline-block');
+        emailCreateSpinner.classList.add('d-none');
+        emailCreateText.textContent = 'Create Email Contact';
+        createEmailBtn.disabled = false;
+        emailModalCloseBtn.disabled = false;
+
+        document.getElementById('notificationModalLabel').textContent = "Error Adding Email Contact";
+
+        document.getElementById('notif-modal-text').textContent = `There was an error adding the email contact ${email}. Please try again.`;
+
+        notificationModal.show();
       }
+      
     });
 
 
     createJiraBtn.addEventListener('click', async function() {
-      jiraModal.hide();
-
       const cloudID = document.getElementById('jira-cloud-id').value;
       const email = document.getElementById('jira-id').value;
       const authToken = document.getElementById('jira-token').value;
+      
+      if (!cloudID || !email || !authToken) {
+        document.getElementById('notificationModalLabel').textContent = "Invalid Input";
+
+        document.getElementById('notif-modal-text').textContent = "Please fill in all Jira credential fields.";
+
+        notificationModal.show();
+        return;
+      }
+
+      const jiraCreateSpinner = document.getElementById('jira-create-spinner');
+      const jiraCreateText = document.querySelector('.jira-create-text');
+      const jiraModalCloseBtn = document.getElementById('jira-modal-close');
+
+      jiraCreateSpinner.classList.remove('d-none');
+      jiraCreateSpinner.classList.add('d-inline-block');
+      jiraCreateText.textContent = 'Creating...';
+      createJiraBtn.disabled = true;
+      jiraModalCloseBtn.disabled = true;
 
       resp = await fetch(`https://${mntrURL}/v1/api/core/user/notifications?sess_id={{ auth_id }}`, {
         method: 'POST',
@@ -332,18 +393,54 @@
       });
 
       if (resp.status === 200) {
-        alert("Jira contact has been added successfully.");
-        location.reload();
+        jiraCreateSpinner.classList.remove('d-inline-block');
+        jiraCreateSpinner.classList.add('d-none');
+        jiraCreateText.textContent = 'Create Jira Contact';
+        createJiraBtn.disabled = false;
+        jiraModalCloseBtn.disabled = false;
+
+        document.getElementById('notificationModalLabel').textContent = "Jira Contact Added";
+
+        document.getElementById('notif-modal-text').textContent = `Jira contact ${email} has been added successfully. You can set it as primary or delete it from the contacts list.`;
+
+        notificationModal.show();
       } else {
-        alert("Failed to add Jira contact. Please try again.");
+        jiraCreateSpinner.classList.remove('d-inline-block');
+        jiraCreateSpinner.classList.add('d-none');
+        jiraCreateText.textContent = 'Create Jira Contact';
+        createJiraBtn.disabled = false;
+        jiraModalCloseBtn.disabled = false;
+
+        document.getElementById('notificationModalLabel').textContent = "Error Adding Jira Contact";
+
+        document.getElementById('notif-modal-text').textContent = `There was an error adding the Jira contact ${email}. Please try again.`;
+
+        notificationModal.show();
       }
     });
 
     createSlackBtn.addEventListener('click', async function() {
-      slackModal.hide();
-
       const slackToken = document.getElementById('slack-token').value;
       const slackChannelID =  document.getElementById('slack-channel-id').value;
+
+      if (!slackToken || !slackChannelID) {
+        document.getElementById('notificationModalLabel').textContent = "Invalid Input";
+
+        document.getElementById('notif-modal-text').textContent = "Please fill in all Slack credential fields.";
+
+        notificationModal.show();
+        return;
+      }
+
+      const slackCreateSpinner = document.getElementById('slack-create-spinner');
+      const slackCreateText = document.querySelector('.slack-create-text');
+      const slackModalCloseBtn = document.getElementById('slack-modal-close');
+
+      slackCreateSpinner.classList.remove('d-none');
+      slackCreateSpinner.classList.add('d-inline-block');
+      slackCreateText.textContent = 'Creating...';
+      createSlackBtn.disabled = true;
+      slackModalCloseBtn.disabled = true;
 
       resp = await fetch(`https://${mntrURL}/v1/api/core/user/notifications?sess_id={{ auth_id }}`, {
         method: 'POST',
@@ -359,43 +456,115 @@
       });
 
       if (resp.status === 200) {
-        alert("Slack contact has been added successfully.");
-        location.reload();
+        slackCreateSpinner.classList.remove('d-inline-block');
+        slackCreateSpinner.classList.add('d-none');
+        slackCreateText.textContent = 'Create Slack Contact';
+        createSlackBtn.disabled = false;
+        slackModalCloseBtn.disabled = false;
+
+        document.getElementById('notificationModalLabel').textContent = "Slack Contact Added";
+
+        document.getElementById('notif-modal-text').textContent = `Slack contact has been added successfully. You can set it as primary or delete it from the contacts list.`;
+
+        notificationModal.show();
       } else {
-        alert("Failed to add Slack contact. Please try again.");
+        slackCreateSpinner.classList.remove('d-inline-block');
+        slackCreateSpinner.classList.add('d-none');
+        slackCreateText.textContent = 'Create Slack Contact';
+        createSlackBtn.disabled = false;
+        slackModalCloseBtn.disabled = false;
+
+        document.getElementById('notificationModalLabel').textContent = "Error Adding Slack Contact";
+
+        document.getElementById('notif-modal-text').textContent = `There was an error adding the Slack contact. Please try again.`;
+
+        notificationModal.show();
       }
     });
 
     createAPIBtn.addEventListener('click', async function() {
-      apiGenModal.hide();
+      const createAPISpinner = document.getElementById('api-create-spinner');
+      const createAPIText = document.querySelector('.api-create-text');
+      const apiModalCloseBtn = document.getElementById('api-create-modal-close');
 
-        resp = await fetch(`https://${mntrURL}//v1/api/core/user/createapi?sess_id={{ auth_id }}`, {
+      createAPISpinner.classList.remove('d-none');
+      createAPISpinner.classList.add('d-inline-block');
+      createAPIText.textContent = 'Creating...';
+      createAPIBtn.disabled = true;
+      apiModalCloseBtn.disabled = true;
+
+      resp = await fetch(`https://${mntrURL}/v1/api/core/user/createapi?sess_id={{ auth_id }}`, {
           method: 'POST',
           credentials:"same-origin"
         });
 
-        if (resp.status === 200) {
-          alert("API key has been created successfully. Retrieve via OTP link sent to your registered email.");
-          //location.reload();
-        } else {
-          alert("Failed to create API key. Please try again.");
-        }
+      if (resp.status === 200) {
+        createAPISpinner.classList.remove('d-inline-block');
+        createAPISpinner.classList.add('d-none');
+        createAPIText.textContent = 'Generate';
+        createAPIBtn.disabled = false;
+        apiModalCloseBtn.disabled = false;
+
+        document.getElementById('notificationModalLabel').textContent = "API Key Created";
+
+        document.getElementById('notif-modal-text').textContent = "API key has been created successfully. Retrieve via OTP link sent to your registered email.";
+
+        notificationModal.show();
+      } else {
+        createAPISpinner.classList.remove('d-inline-block');
+        createAPISpinner.classList.add('d-none');
+        createAPIText.textContent = 'Generate';
+        createAPIBtn.disabled = false;
+        apiModalCloseBtn.disabled = false;
+
+        document.getElementById('notificationModalLabel').textContent = "Error Creating API Key";
+
+        document.getElementById('notif-modal-text').textContent = "Failed to create API key. Please try again.";
+
+        notificationModal.show();
+      }
     });
 
     refreshAPIBtn.addEventListener('click', async function() {
-      apiRefreshModal.hide();
+      const refreshAPISpinner = document.getElementById('api-refresh-spinner');
+      const refreshAPIText = document.querySelector('.api-refresh-text');
+      const apiRefreshModalCloseBtn = document.getElementById('api-refresh-modal-close');
+      refreshAPISpinner.classList.remove('d-none');
+      refreshAPISpinner.classList.add('d-inline-block');
+      refreshAPIText.textContent = 'Refreshing...';
+      refreshAPIBtn.disabled = true;
+      apiRefreshModalCloseBtn.disabled = true;
 
-        resp = await fetch(`https://${mntrURL}/v1/api/core/user/resetapi?sess_id={{ auth_id }}`, {
+      resp = await fetch(`https://${mntrURL}/v1/api/core/user/resetapi?sess_id={{ auth_id }}`, {
           method: 'POST',
           credentials:"same-origin"
         });
 
-        if (resp.status === 200) {
-          alert("API key has been reset successfully.");
-          //location.reload();
-        } else {
-          alert("Failed to reset API key. Please try again.");
-        }
+      if (resp.status === 200) {
+        refreshAPISpinner.classList.remove('d-inline-block');
+        refreshAPISpinner.classList.add('d-none');
+        refreshAPIText.textContent = 'Refresh';
+        refreshAPIBtn.disabled = false;
+        apiRefreshModalCloseBtn.disabled = false;
+
+        document.getElementById('notificationModalLabel').textContent = "API Key Reset";
+
+        document.getElementById('notif-modal-text').textContent = "API key has been reset successfully.";
+
+        notificationModal.show();
+      } else {
+        refreshAPISpinner.classList.remove('d-inline-block');
+        refreshAPISpinner.classList.add('d-none');
+        refreshAPIText.textContent = 'Refresh';
+        refreshAPIBtn.disabled = false;
+        apiRefreshModalCloseBtn.disabled = false;
+
+        document.getElementById('notificationModalLabel').textContent = "Error Resetting API Key";
+
+        document.getElementById('notif-modal-text').textContent = "Failed to reset API key. Please try again.";
+
+        notificationModal.show();
+      }
     });
 
     addAPIBtn.addEventListener('click', async function() {

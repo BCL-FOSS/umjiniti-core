@@ -30,7 +30,7 @@
               <ul class="dropdown-menu" aria-labelledby="flowDropdown">
                 {% for probe in all_probes.values() %}
                   <li>
-                    <div class="dropdown-item" value="{{ probe.db_id }}">{{ probe.name }}:{{ probe.url }}</div>
+                    <div class="dropdown-item" value="{{ probe.prb_id }}">{{ probe.name }}:{{ probe.url }}</div>
                   </li>
                 {% endfor %}
               </ul>
@@ -48,6 +48,12 @@
                 <li><div class="dropdown-item drag-drawflow" draggable="true" ondragstart="drag(event)" data-node="speedtest"><i class="fas fa-code-branch"></i>Network Speedtest</div></li>
                 <li><div class="dropdown-item drag-drawflow" draggable="true" ondragstart="drag(event)" data-node="traceroute"><i class="fas fa-fill"></i>Traceroute</div></li>
                 <li><div class="dropdown-item drag-drawflow" draggable="true" ondragstart="drag(event)" data-node="traceroute_dns"><i class="fas fa-mouse"></i>DNS Traceroute</div></li>
+                <li><h6 class="dropdown-header">Probe Endpoints</h6></li>
+                {% for probe in all_probes.values() %}
+                  <li>
+                    <div class="dropdown-item drag-drawflow" draggable="true" ondragstart="drag(event)" data-node="{{ probe.prb_id }}"><i class="fas fa-mouse"></i>{{ probe.name }}</div>
+                  </li>
+                {% endfor %}
               </ul>
             </div>
           </li>
@@ -231,120 +237,138 @@
       pos_x = pos_x * ( editor.precanvas.clientWidth / (editor.precanvas.clientWidth * editor.zoom)) - (editor.precanvas.getBoundingClientRect().x * ( editor.precanvas.clientWidth / (editor.precanvas.clientWidth * editor.zoom)));
       pos_y = pos_y * ( editor.precanvas.clientHeight / (editor.precanvas.clientHeight * editor.zoom)) - (editor.precanvas.getBoundingClientRect().y * ( editor.precanvas.clientHeight / (editor.precanvas.clientHeight * editor.zoom)));
 
-      switch (name) {
-        case 'slack':
-          var slackchat = `
-           <div>
-            <div class="title-box"><i class="fab fa-telegram-plane"></i> Slack Alert</div>
-            <div class="box">
-              <p>Slack Alert Contact ID</p>
-              <input type="text" placeholder="Enter Slack Alert Contact ID..." df-slackid>
-            </div>
-          </div>
-          `;
-          data = {type: 'alert', name: name}
-          editor.addNode('slack', 1, 0, pos_x, pos_y, 'slack', data, slackchat );
-          break;
-        case 'jsm':
-          var jira = `
+      if (typeof name === "string" && name.startsWith("prb:")) {
+        const probeName = name.split(":")[1];
+
+        var probe = `
           <div>
-            <div class="title-box"><i class="fab fa-telegram-plane"></i> Jira Service Management Alert</div>
+            <div class="title-box">Probe Action</div>
             <div class="box">
-              <p>Jira Alert Contact ID</p>
-              <input type="text" placeholder="Enter Jira Alert Contact ID..." df-jiraid>
+              <p>Probe: ${probeName}</p>
             </div>
           </div>
-          `;
-          data = {type: 'alert', name: name}
-          editor.addNode('jira', 1, 0, pos_x, pos_y, 'jira', data, jira );
-          break;
-        case 'email':
-          var email = `
-          <div>
-            <div class="title-box"><i class="fab fa-telegram-plane"></i> Email Alert</div>
-            <div class="box">
-              <p>Email Alert Contact ID</p>
-              <input type="text" placeholder="Enter Email Alert Contact ID..." df-emailid>
-              <input type="text" placeholder="Enter Email alert recipient..." df-emailrecipient>
-            </div>
-          </div>
-            `;
-          data = {type: 'alert', name: name}
-          editor.addNode('email', 1, 0, pos_x, pos_y, 'email', data, email );
-          break;
-        case 'speedtest':
-          var tool = `
-            <div style="background-color: #8b7da8;>
-              <div class="title-box">Network Speedtest</div>
-              <div class="box" style="background-color: #8b7da8;">
-                <p>Server settings</p>
-                <input type="text" placeholder="Enter IP address of interface to bind to..." df-spdshost>
-                <input type="text" placeholder="Enter cmd options if necessary..." df-spdsoptions>
+        `;
+        data = { type: 'probe', name: name };
+        editor.addNode('probe', 1, 0, pos_x, pos_y, 'probe', data, probe);
+
+      } else {
+        switch (name) {
+          case 'slack':
+            var slackchat = `
+            <div>
+              <div class="title-box"><i class="fab fa-telegram-plane"></i> Slack Alert</div>
+              <div class="box">
+                <p>Slack Alert Contact ID</p>
+                <input type="text" placeholder="Enter Slack Alert Contact ID..." df-slackid>
               </div>
             </div>
             `;
-          data = {type: 'tool', name: name}
-          editor.addNode(name, 0, 3, pos_x, pos_y, name, data, tool );
-          break;
-        case 'traceroute':
-          var tool = `
-            <div style="background-color: #8b7da8;>
-              <div class="title-box">Traceroute </div>
-              <div class="box" style="background-color: #8b7da8;">
-                <input type="text" placeholder="Enter target" df-target>
-                <input type="text" placeholder="Enter cmd options if necessary" df-options>
-                <input type="text" placeholder="Enter preferred packet length if necessary" df-packetlen>
+            data = {type: 'alert', name: name}
+            editor.addNode('slack', 1, 0, pos_x, pos_y, 'slack', data, slackchat );
+            break;
+          case 'jsm':
+            var jira = `
+            <div>
+              <div class="title-box"><i class="fab fa-telegram-plane"></i> Jira Service Management Alert</div>
+              <div class="box">
+                <p>Jira Alert Contact ID</p>
+                <input type="text" placeholder="Enter Jira Alert Contact ID..." df-jiraid>
               </div>
             </div>
             `;
-          data = {type: 'tool', name: name}
-          editor.addNode(name, 0, 3, pos_x, pos_y, name, data, tool );
-          break;
-        case 'traceroute_dns': 
+            data = {type: 'alert', name: name}
+            editor.addNode('jira', 1, 0, pos_x, pos_y, 'jira', data, jira );
+            break;
+          case 'email':
+            var email = `
+            <div>
+              <div class="title-box"><i class="fab fa-telegram-plane"></i> Email Alert</div>
+              <div class="box">
+                <p>Email Alert Contact ID</p>
+                <input type="text" placeholder="Enter Email Alert Contact ID..." df-emailid>
+                <input type="text" placeholder="Enter Email alert recipient..." df-emailrecipient>
+              </div>
+            </div>
+              `;
+            data = {type: 'alert', name: name}
+            editor.addNode('email', 1, 0, pos_x, pos_y, 'email', data, email );
+            break;
+          case 'speedtest':
             var tool = `
-            <div style="background-color: #8b7da8;">
-              <div class="title-box">DNS Traceroute </div>
-              <div class="box" style="background-color: #8b7da8;">
-                <input type="text" placeholder="Enter target" df-target>
-                <input type="text" placeholder="Enter cmd options if necessary" df-options>
-                <input type="text" placeholder="Enter DNS server for test if necessary\n(default 8.8.8.8)" df-server>
+              <div style="background-color: #8b7da8;>
+                <div class="title-box">Network Speedtest</div>
+                <div class="box" style="background-color: #8b7da8;">
+                  <p>Server settings</p>
+                  <input type="text" placeholder="Enter IP address of interface to bind to..." df-spdshost>
+                  <input type="text" placeholder="Enter cmd options if necessary..." df-spdsoptions>
+                </div>
               </div>
-            </div>
-            `;
-          data = {type: 'tool', name: name}
-          editor.addNode(name, 0, 3, pos_x, pos_y, name, data, tool );
-          break;
-        default: 
-          var mcp = `
-            <div style="background-color: #8b7da8;>
-              <div class="title-box">Umjiniti Probe </div>
-              <div class="box" style="background-color: #8b7da8;">
-                <p>select tool</p>
-                <select df-mcptool>
-                  <option value="iperf_c">Speedtest Client</option>
-                  <option value="iperf_s">Speedtest Server</option>
-                  <option value="trct_tar">Traceroute Target</option>
-                  <option value="dnstrct_tar">DNS Traceroute Target</option>
-                </select>
-                <p>speedtest server settings</p>
-                <input type="text" placeholder="Enter IP address of interface to bind to..." df-spdshost>
-                <input type="text" placeholder="Enter cmd options if necessary..." df-spdsoptions>
-                <p>speedtest client settings</p>
-                <input type="text" placeholder="Enter IP/FQDN of speedtest server if running as client (required)" df-spdcserver>
-                <input type="text" placeholder="Enter IP address of interface to bind to..." df-spdchost>
-                <input type="text" placeholder="Enter cmd options if necessary..." df-spdcoptions>
-                <p>traceroute settings</p>
-                <input type="text" placeholder="Enter cmd options if necessary" df-trcoptions>
-                <input type="text" placeholder="Set size of the probe packet" df-packetlen>
-                <input type="text" placeholder="Enter DNS server for test if necessary (default 8.8.8.8)" df-dnstrcserver>
+              `;
+            data = {type: 'tool', name: name}
+            editor.addNode(name, 0, 3, pos_x, pos_y, name, data, tool );
+            break;
+          case 'traceroute':
+            var tool = `
+              <div style="background-color: #8b7da8;>
+                <div class="title-box">Traceroute </div>
+                <div class="box" style="background-color: #8b7da8;">
+                  <input type="text" placeholder="Enter target" df-target>
+                  <input type="text" placeholder="Enter cmd options if necessary" df-options>
+                  <input type="text" placeholder="Enter preferred packet length if necessary" df-packetlen>
+                </div>
               </div>
-            </div>
-            
-            `;
-          data = {type: 'mcp', name: name}
-          editor.addNode(name, 0, 3, pos_x, pos_y, name, data, mcp );
-          break;
+              `;
+            data = {type: 'tool', name: name}
+            editor.addNode(name, 0, 3, pos_x, pos_y, name, data, tool );
+            break;
+          case 'traceroute_dns': 
+              var tool = `
+              <div style="background-color: #8b7da8;">
+                <div class="title-box">DNS Traceroute </div>
+                <div class="box" style="background-color: #8b7da8;">
+                  <input type="text" placeholder="Enter target" df-target>
+                  <input type="text" placeholder="Enter cmd options if necessary" df-options>
+                  <input type="text" placeholder="Enter DNS server for test if necessary\n(default 8.8.8.8)" df-server>
+                </div>
+              </div>
+              `;
+            data = {type: 'tool', name: name}
+            editor.addNode(name, 0, 3, pos_x, pos_y, name, data, tool );
+            break;
+          default: 
+            var mcp = `
+              <div style="background-color: #8b7da8;>
+                <div class="title-box">Umjiniti Probe </div>
+                <div class="box" style="background-color: #8b7da8;">
+                  <p>select tool</p>
+                  <select df-mcptool>
+                    <option value="iperf_c">Speedtest Client</option>
+                    <option value="iperf_s">Speedtest Server</option>
+                    <option value="trct_tar">Traceroute Target</option>
+                    <option value="dnstrct_tar">DNS Traceroute Target</option>
+                  </select>
+                  <p>speedtest server settings</p>
+                  <input type="text" placeholder="Enter IP address of interface to bind to..." df-spdshost>
+                  <input type="text" placeholder="Enter cmd options if necessary..." df-spdsoptions>
+                  <p>speedtest client settings</p>
+                  <input type="text" placeholder="Enter IP/FQDN of speedtest server if running as client (required)" df-spdcserver>
+                  <input type="text" placeholder="Enter IP address of interface to bind to..." df-spdchost>
+                  <input type="text" placeholder="Enter cmd options if necessary..." df-spdcoptions>
+                  <p>traceroute settings</p>
+                  <input type="text" placeholder="Enter cmd options if necessary" df-trcoptions>
+                  <input type="text" placeholder="Set size of the probe packet" df-packetlen>
+                  <input type="text" placeholder="Enter DNS server for test if necessary (default 8.8.8.8)" df-dnstrcserver>
+                </div>
+              </div>
+              
+              `;
+            data = {type: 'mcp', name: name}
+            editor.addNode(name, 0, 3, pos_x, pos_y, name, data, mcp );
+            break;
+        }
+
       }
+      
     }
 
   var transform = '';
