@@ -455,10 +455,10 @@ async def settings(cmp_id, obsc):
   
     return await render_template("app/settings.html", obsc_key=session.get('url_key'), cmp_id=cmp_id, data=data, cur_usr=cl_sess_data_dict.get('unm'), mntr_url=mntr_url, all_alert_types=all_alert_types, ws_url=ws_url, auth_id=cur_usr_id)
 
-@app.route('/floweditor', defaults={'cmp_id': 'bcl','obsc': url_key}, methods=['GET', 'POST'])
-@app.route("/floweditor/<string:cmp_id>/<string:obsc>", methods=['GET', 'POST'])
+@app.route('/floweditor', defaults={'cmp_id': 'bcl','obsc': url_key, 'flow_id': 'default'}, methods=['GET', 'POST'])
+@app.route("/floweditor/<string:cmp_id>/<string:obsc>/<string:flow_id>", methods=['GET', 'POST'])
 @user_login_required
-async def floweditor(cmp_id, obsc):
+async def floweditor(cmp_id, obsc, flow_id):
     util_obj = Util()
 
     cur_usr_id = current_client.auth_id
@@ -496,7 +496,7 @@ async def floweditor(cmp_id, obsc):
 
     return await render_template("app/floweditor.html", obsc_key=session.get('url_key') ,
                                 cmp_id=cmp_id, all_probes=probe_data, mntr_url=mntr_url, 
-                                user=cl_sess_data_dict.get('unm'), flows=all_flows, cur_usr=cur_usr, ws_url=ws_url, auth_id=cur_usr_id, data=data)
+                                user=cl_sess_data_dict.get('unm'), flows=all_flows, cur_usr=cur_usr, ws_url=ws_url, auth_id=cur_usr_id, data=data, flow_id=flow_id)
 
 @app.route('/probes', defaults={'cmp_id': 'bcl','obsc': url_key}, methods=['GET', 'POST'])
 @app.route("/probes/<string:cmp_id>/<string:obsc>", methods=['GET', 'POST'])

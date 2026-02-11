@@ -221,7 +221,7 @@
                 </g>
               </svg>
             </div>
-            <span class="text-white nav-link-text ms-1">SmartBot</span>
+            <span class="text-white nav-link-text ms-1">Chat with SmartBot</span>
           </a>
         </li>
         <li class="nav-item">
@@ -241,7 +241,7 @@
                 </g>
               </svg>
             </div>
-            <span class="text-white nav-link-text ms-1">Chat History</span>
+            <span class="text-white nav-link-text ms-1">View Chat History</span>
           </a>
         </li>
         <li class="nav-item mt-3">
@@ -264,7 +264,7 @@
                 </g>
               </svg>
             </div>
-            <span class="text-white nav-link-text ms-1">New Workflow</span>
+            <span class="text-white nav-link-text ms-1">Create Workflow</span>
           </a>
         </li>
         <li class="nav-item">
@@ -284,7 +284,7 @@
                 </g>
               </svg>
             </div>
-            <span class="text-white nav-link-text ms-1">Workflow Manager</span>
+            <span class="text-white nav-link-text ms-1">Manage Workflows</span>
           </a>
         </li>
         <li class="nav-item">
@@ -304,7 +304,7 @@
                 </g>
               </svg>
             </div>
-            <span class="text-white nav-link-text ms-1">Task Manager</span>
+            <span class="text-white nav-link-text ms-1">Manage Tasks</span>
           </a>
         </li>
       </ul>
@@ -1598,30 +1598,6 @@
       })
       
       ws.send(perf_data);
-    });
-
-    // Save flow
-    document.getElementById('save-flow').addEventListener('click', async ()=>{
-      if (selectedFlow === null){
-        alert("Select a main probe for this flow...");
-      } else {
-        let savename = prompt("Name your workflow:");
-
-        if (savename !== null && savename !== "") {
-        const data = editor.export();
-        alert(savename);
-        const flow = JSON.stringify(data, null,4)
-        const payload = { id: `${selectedFlow}-flow`, flow: flow, probe: selectedFlow, unm: "{{ user }}" , name: savename}
-        //const resp = await fetch(`https://${mntrURL}/flowsave?usr={{ cur_usr }}`, {method:'POST', headers:{'Content-Type':'application/json', 'X-ACCESS-TOKEN':'{{ jwt_token }}'}, body:JSON.stringify(payload)})
-        const resp = await fetch(`https://${mntrURL}/flowsave?usr={{ cur_usr }}`, {method:'POST', credentials: "same-origin", body:JSON.stringify(payload)})
-        const j = await resp.json()
-        alert('Save Result: '+JSON.stringify(j));
-        } else if (savename === "" || savename === null) {
-          alert("You didn't enter anything.");
-        } else {
-          alert("You cancelled the input.");
-        }
-      }
     });
 
     chatInput.addEventListener("keypress", e => {

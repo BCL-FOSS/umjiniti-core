@@ -549,8 +549,8 @@
 
     if (resp.ok) {
       alert(JSON.stringify(j))
-      editor.clearModuleSelected()
-      editor.import(j)
+      editor.clearModuleSelected();
+      editor.import(j);
       alert('Loaded Flow data');
     }
   });

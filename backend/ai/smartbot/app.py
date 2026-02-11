@@ -475,12 +475,10 @@ async def analysis():
 async def save():
     data = await request.get_json()
     logger.info(data)
-    id = data.get('id')
     flow = json.loads(data.get('flow'))
-    user = data.get('unm')
     selected_probe = data.get('probe')
     name = data.get('name')
-    flow_id = f'flow:{id}:{str(uuid.uuid4())}'
+    flow_id = f'flow:{selected_probe}:{str(uuid.uuid4())}'
 
     flow_data = {
         'id': flow_id,
@@ -517,7 +515,11 @@ async def load():
         flow_dict = ast.literal_eval(flow_data_str)
 
         logger.info(flow_dict)
-        return jsonify(flow_dict)
+        returned_data = {
+            'name': requested_flow_data['name'],
+            'flow': flow_dict
+        }
+        return jsonify(returned_data), 200
     else:
         return jsonify({'status':'error'}), 400
     
