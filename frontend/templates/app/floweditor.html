@@ -791,6 +791,39 @@
             data = {type: 'alert', name: name}
             editor.addNode('port', 1, 0, pos_x, pos_y, 'port', data, arp );
             break;
+          case 'pcap_tux':
+          case 'pcap_win':
+            var arp = `
+            <div>
+              <div class="title-box"><i class="fab fa-telegram-plane"></i>Local Packet Capture</div>
+              <div class="box">
+                <div class="form-floating mb-3">
+                  <label class="form-label">Remote Interface</label>
+                  <input type="text" class="form-control" df-pcaplcl-iface>
+                </div>
+                <div class="form-floating mb-3">
+                  <label class="form-label">Capture Count</label>
+                  <input type="number" class="form-control" placeholder="Enter the number of packets to capture" df-pcaplcl-options>
+                  <div class="form-text" id="scan-addon4">Enter the number of packets to capture (optional)</div>
+                </div>
+                <div class="form-floating mb-3">
+                  <label class="form-label">Remote Host</label>
+                  <input type="text" class="form-control" placeholder="IP of remote host for capture" df-pcaprmhost>
+                </div>
+                <div class="form-floating mb-3">
+                  <label class="form-label">Remote User</label>
+                  <input type="text" class="form-control" placeholder="Username for remote host" df-pcaprmuser>
+                </div>
+                <div class="form-floating mb-3">
+                  <label class="form-label">Remote Password</label>
+                  <input type="password" class="form-control" placeholder="Password for remote host" df-pcaprmpass>
+                </div>
+              </div>
+            </div>
+              `;
+            data = {type: 'alert', name: name}
+            editor.addNode('port', 1, 0, pos_x, pos_y, 'port', data, arp );
+            break;
         }
 
       }
