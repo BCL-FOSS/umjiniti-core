@@ -14,85 +14,41 @@
           <h6>All Alerts</h6>
         </div>
         <div class="card-body px-0 pt-0 pb-2">
-          <div class="table-responsive">
-            <table class="table align-items-center mb-0">
-              <thead>
-                <tr>
-                  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Type</th>
-                  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">Name</th>
-                  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">Site</th>
-                  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">Timestamp</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {% for alert in all_alerts.values() %}
-                <tr>
-                  <td>
-                    <div class="d-flex px-2">
-                      <div>
-                        <img src="{{ url_for('static', filename='img/bcl/'+alert.alert_type+'.svg') }}" class="avatar avatar-sm rounded-circle me-2"/>
-                      </div>
-                      <div class="my-auto">
-                        <h6 class="mb-0 text-xs">{{ alert.alert_type }}</h6>
-                      </div>
-                    </div>
-                  </td>
-                  <td>
-                    <p class="text-xs font-weight-bold mb-0">{{ alert.name }}</p>
-                  </td>
-                  <td>
-                    <span class="badge badge-dot me-4">
-                      <i class="bg-info"></i>
-                      <span class="text-dark text-xs">{{ alert.site }}</span>
-                    </span>
-                  </td>
-                  <td class="align-middle text-center">
-                    <div class="d-flex align-items-center">
-                      <span class="me-2 text-xs">{{ alert.timestamp }}</span>
-                    </div>
-                  </td>
-
-                  <td class="align-middle">
+          <div class="row mb-3">
+            {% for message in chats.values() %}
+            <div class="col-xl-3 col-md-6 mb-xl-0 mb-4">
+              <div class="card card-blog card-plain">
+                <div class="position-relative">
+                  <a class="d-block">
+                    <img src="{{ url_for('static', filename='img/bcl/' + message.type + '.svg') }}" alt="img-blur-shadow"
+                        class="img-fluid shadow border-radius-md"/>
+                  </a>
+                </div>
+                <div class="card-body px-1 pb-0">
+                  <a >
+                    <h5 class="font-weight-bolder">
+                      {{ message.name }}
+                    </h5>
+                  </a>
+                  <p class="mb-4 text-sm">
+                    {{ message.type }}
+                  </p>
+                  <p class="text-secondary mb-0 text-sm">Is Primary: {{ message.is_primary }}</p>
+                  <div class="d-flex align-items-center justify-content-between">
                     <div class="input-group mb-3">
-                      <button type="button" class="btn btn-sm btn-info ms-2 alert-details-btn"
-                          data-name="{{ alert.name|e }}"
-                          data-msg="{{ alert.msg|e }}"
-                          data-site="{{ alert.site|e }}"
-                          data-prb_id="{{ alert.prb_id|e }}"
-                          data-timestamp="{{ alert.timestamp|e }}"
-                          data-alert_type="{{ alert.alert_type|e }}"
-                          data-id="{{ alert.id }}">
-                        View Details
+                      <button class="btn btn-outline-primary btn-sm mb-0" id="fav-contact">
+                        Make Primary {{ message.type.capitalize() }} Contact
                       </button>
-                      <button type="button" class="btn btn-sm btn-info ms-2 alert-acknowledge-btn"
-                          data-name="{{ alert.name|e }}"
-                          data-msg="{{ alert.msg|e }}"
-                          data-site="{{ alert.site|e }}"
-                          data-prb_id="{{ alert.prb_id|e }}"
-                          data-timestamp="{{ alert.timestamp|e }}"
-                          data-alert_type="{{ alert.alert_type|e }}"
-                          data-id="{{ alert.id }}">
-                        Acknowledge
-                      </button>
-                      <button type="button" class="btn btn-sm btn-info ms-2 alert-resolve-btn"
-                          data-name="{{ alert.name|e }}"
-                          data-msg="{{ alert.msg|e }}"
-                          data-site="{{ alert.site|e }}"
-                          data-prb_id="{{ alert.prb_id|e }}"
-                          data-timestamp="{{ alert.timestamp|e }}"
-                          data-alert_type="{{ alert.alert_type|e }}"
-                          data-id="{{ alert.id }}">
-                        Resolve
+                      <button type="button" class="btn btn-outline-danger btn-sm mb-0" id="del-contact">
+                        Delete Contact
                       </button>
                     </div>
-                  </td>
-                </tr>
-                {% endfor %}
-              </tbody>
-            </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+            {% endfor %}
           </div>
-
         </div>
       </div>
     </div>

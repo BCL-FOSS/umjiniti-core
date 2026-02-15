@@ -3,8 +3,6 @@ from init_app import (app, client_auth, current_admin, current_client, logger,
                       )
 from forms.LoginForm import LoginForm
 from forms.RegisterForm import RegisterForm
-from forms.AlertJiraForm import AlertJiraForm
-from forms.AlertSlackForm import AlertSlackForm
 from quart import (render_template_string, render_template, flash, redirect, url_for, session, request, abort)
 from quart_wtf.csrf import CSRFError
 from quart_auth import (

@@ -1,0 +1,1034 @@
+{% extends 'app/base.html' %}
+
+{% block content %}
+<div class="container-fluid py-4">
+  <div class="row">
+    <div class="col-12">
+      <div class="card mb-4">
+        <div class="card-header pb-0">
+          <h6>Probe: {{ probe_name }} Dashboard</h6>
+        </div>
+        <div class="card-body px-0 pt-0 pb-2">
+          <div class="row">
+            <div class="col-md-6 col-lg-5 col-xl-4 mb-4 mb-md-0">
+              <div class="p-3">
+                <!-- Dropdown -->
+                <div class="mb-3">
+                  <div class="input-group rounded mb-3">
+                    <a href="#!" class="btn btn-outline-secondary btn-lg">Back to Probes</a>
+                  </div>
+                </div>
+
+                <!-- List -->
+                <div style="position: relative; height: 400px; overflow-y:auto;" id="tool-list-container">
+                  <ul class="list-unstyled mb-0" id="tool-list">
+                    <li class="p-2 border-bottom" data-value="netmaps">
+                      <a href="#!" class="d-flex justify-content-between">
+                        <div class="d-flex flex-row">
+                          <img src="https://mdbcdn.b-cdn.net/img/Photos/new-templates/bootstrap-chat/ava1-bg.webp"
+                              alt="avatar" class="d-flex align-self-center me-3" width="60">
+                          <div class="pt-1">
+                            <p class="fw-bold mb-0">Network Visualizer</p>
+                          </div>
+                        </div>
+                      </a>
+                    </li>
+                    <li class="p-2 border-bottom" data-value="flows">
+                      <a href="#!" class="d-flex justify-content-between">
+                        <div class="d-flex flex-row">
+                          <img src="https://mdbcdn.b-cdn.net/img/Photos/new-templates/bootstrap-chat/ava1-bg.webp"
+                              alt="avatar" class="d-flex align-self-center me-3" width="60">
+                          <div class="pt-1">
+                            <p class="fw-bold mb-0">Workflows</p>
+                          </div>
+                        </div>
+                      </a>
+                    </li>
+                    <li class="p-2 border-bottom" data-value="create-task">
+                      <a href="#!" class="d-flex justify-content-between">
+                        <div class="d-flex flex-row">
+                          <img src="https://mdbcdn.b-cdn.net/img/Photos/new-templates/bootstrap-chat/ava1-bg.webp"
+                              alt="avatar" class="d-flex align-self-center me-3" width="60">
+                          <div class="pt-1">
+                            <p class="fw-bold mb-0">Create Task</p>
+                          </div>
+                        </div>
+                      </a>
+                    </li>
+                    <li class="p-2 border-bottom" data-value="tasks-list">
+                      <a href="#!" class="d-flex justify-content-between">
+                        <div class="d-flex flex-row">
+                          <img src="https://mdbcdn.b-cdn.net/img/Photos/new-templates/bootstrap-chat/ava1-bg.webp"
+                              alt="avatar" class="d-flex align-self-center me-3" width="60">
+                          <div class="pt-1">
+                            <p class="fw-bold mb-0">Tasks List</p>
+                          </div>
+                        </div>
+                      </a>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right: Probe Tools (multiple windows) -->
+            <div class="col-md-6 col-lg-7 col-xl-8">
+              <div id="probe-tools-container" style="height: 500px; overflow-y: auto;" class="border p-3 mb-3">
+
+                <div class="card shadow h-100 tool-window" id="tool-netmaps" style="display: none; height:100%; overflow-y:auto;">
+                  <div class="card-header pb-0 p-3" >
+                    <h6 class="mb-0">Network Visualizer</h6>
+                  </div>
+                  <div class="card-body p-3">
+                    <!-- Tabs Navigation -->
+                    <ul class="nav nav-tabs" id="netVisTab" role="tablist">
+                      <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="path-trace-tab" data-bs-toggle="tab" data-bs-target="#path-trace-pane" type="button" role="tab" aria-controls="path-trace-pane" aria-selected="true">
+                          Path Trace
+                        </button>
+                      </li>
+                      <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="perf-test-tab" data-bs-toggle="tab" data-bs-target="#perf-test-pane" type="button" role="tab" aria-controls="perf-test-pane" aria-selected="false">
+                          Performance Test
+                        </button>
+                      </li>
+                      <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="scans-tab" data-bs-toggle="tab" data-bs-target="#scans-pane" type="button" role="tab" aria-controls="scans-pane" aria-selected="false">
+                          Scans
+                        </button>
+                      </li>
+                      <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="pcap-tab" data-bs-toggle="tab" data-bs-target="#pcap-pane" type="button" role="tab" aria-controls="pcap-pane" aria-selected="false">
+                          Packet Captures
+                        </button>
+                      </li>
+                    </ul>
+
+                    <!-- Tabs Content -->
+                    <div class="tab-content pt-3" id="netVisTabContent">
+                      <!-- Path Trace Tab -->
+                      <div class="tab-pane fade show active" id="path-trace-pane" role="tabpanel" aria-labelledby="path-trace-tab">
+                        <div class="card shadow h-100">
+                          <div class="card-header pb-0 p-3">
+                            <div class="input-group mb-3">
+                              <select id="trace-type-select" class="form-select" aria-label="Select Trace Type" aria-placeholder="Choose Traceroute Results to View">
+                                {% for trace in trace_results.values() %}
+                                  <option value="{{ trace.id }}">{{ trace.probe_name }} - {{ trace.type }} - {{ trace.timestamp }}</option>
+                                {% endfor %}
+                              </select>
+                              <button class="btn btn-outline-secondary ms-2" id="view-trace-btn">View Trace</button>
+                            </div>
+                            
+                          </div>
+                          <div class="card-body p-3">
+                            <div id="trace-alerts"></div>
+                            <div id="network-trace" style="width: 100%; height: 500px; border: 1px solid #ccc; background: #f0f0f0;"></div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <!-- Performance Test Tab -->
+                      <div class="tab-pane fade" id="perf-test-pane" role="tabpanel" aria-labelledby="perf-test-tab">
+                        <div class="card shadow h-100">
+                          <div class="card-header pb-0 p-3">
+                            <div class="input-group mb-3">
+                              <select id="perf-type-select" class="form-select" aria-label="Select Performance Test Type" aria-placeholder="Choose Performance Test Results to View">
+                                {% for perf in perf_results.values() %}
+                                  <option value="{{ perf.id }}">{{ perf.probe_name }} - {{ perf.type }} - {{ perf.timestamp }}</option>
+                                {% endfor %}
+                              </select>
+                              <button class="btn btn-outline-secondary ms-2" id="view-perf-btn">View Performance Test</button>
+                            </div>
+                           
+                          </div>
+                          <div class="card-body p-3">
+                            <div id="perf-alerts"></div>
+                            <div id="network-perf" style="width: 100%; height: 500px; border: 1px solid #ccc; background: #f0f0f0;"></div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <!-- Scans Tab -->
+                      <div class="tab-pane fade" id="scans-pane" role="tabpanel" aria-labelledby="scans-tab">
+                        <div class="card shadow h-100">
+                          <div class="card-header pb-0 p-3">
+                            <div class="input-group mb-3">  
+                              <select id="scan-type-select" class="form-select" aria-label="Select Scan Type" aria-placeholder="Choose Scan Results to View">
+                                {% for scan in scan_results.values() %}
+                                  <option value="{{ scan.id }}">{{ scan.probe_name }} - {{ scan.type }} - {{ scan.timestamp }}</option>
+                                {% endfor %}
+                              </select>
+                              <button class="btn btn-outline-secondary ms-2" id="view-scan-btn">View Scan</button>
+                            </div>
+                          </div>
+                          <div class="card-body p-3">
+                            <div id="scan-alerts"></div>
+                            <div id="network-scan" style="width: 100%; height: 500px; border: 1px solid #ccc; background: #f0f0f0;"></div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <!-- Packet Captures Tab -->
+                      <div class="tab-pane fade" id="pcap-pane" role="tabpanel" aria-labelledby="pcap-tab">
+                        <div class="card shadow h-100">
+                          <div class="card-header pb-0 p-3">
+                            <div class="input-group mb-3">  
+                              <select id="pcap-type-select" class="form-select" aria-label="Select Packet Capture to View" aria-placeholder="Choose Packet Capture Results to View">
+                                {% for pcap in pcap_results.values() %}
+                                  <option value="{{ pcap.id }}">{{ pcap.probe_name }} - {{ pcap.type }} - {{ pcap.timestamp }}</option>
+                                {% endfor %}
+                              </select>
+                              <button class="btn btn-outline-secondary ms-2" id="view-pcap-btn">View Packet Capture</button>
+                            </div>
+                          </div>
+                          <div class="card-body p-3">
+                            <div id="pcap-alerts"></div>
+                            <div id="network-pcap" style="width: 100%; height: 500px; border: 1px solid #ccc; background: #f0f0f0;"></div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="card shadow h-100 tool-window" id="tool-flows" style="display: none; height:100%; overflow-y:auto;">
+                  <div class="card-header pb-0 p-3">
+                    <h6 class="mb-0">FlowBot Automation Workflows</h6>
+                  </div>
+                  <div class="card-body p-3">
+                    <div class="table-responsive">
+                      <table class="table align-items-center mb-0" id="flowTable">
+                        <thead>
+                          <tr>
+                            <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Name</th>
+                            <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">Assigned Probe</th>
+                            <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">Actions</th>
+                          
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {% for flow in flows.values() %}
+                          <tr>
+                            <td>
+                              <div class="d-flex px-2">
+                                <div>
+                                  <img src="{{ url_for('static', filename='img/bcl/workflow.svg') }}" class="avatar avatar-sm rounded-circle"/>
+                                </div>
+                                <div class="my-auto">
+                                  <h6 class="mb-0 text-xs">{{ flow.name }}</h6>
+                                </div>
+                              </div>
+                            </td>
+                            <td>
+                              <p class="text-xs font-weight-bold mb-0">{{ flow.probe }}</p>
+                            </td>
+                            <td>
+                                <div class="input-group mb-3">
+                                  <button type="button" class="btn btn-sm btn-dark ms-2 flow-edit-btn"
+                                      data-id="{{ flow.id|e }}"
+                                      data-name="{{ flow.name }}"
+                                      data-probe="{{ flow.probe|e }}">
+                                    Edit
+                                  </button>
+                                  <button class="btn btn-sm btn-outline-danger ms-2 flow-delete-btn"
+                                      data-id="{{ flow.id|e }}"
+                                      data-name="{{ flow.name }}"
+                                      data-probe="{{ flow.probe|e }}">
+                                    Delete
+                                  </button>
+                                </div>
+                            </td>
+                          </tr>
+                          {% endfor %}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="card shadow h-100 tool-window" id="tool-tasks-list" style="display: none; height:100%; overflow-y:auto;">
+                  <div class="card-header pb-0 p-3">
+                    <h6 class="mb-0">Assigned Tasks</h6>
+                  </div>
+                  <div class="card-body p-3">
+                    <div class="table-responsive">
+                      <table class="table align-items-center mb-0">
+                        <thead>
+                          <tr>
+                            <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Type</th>
+                            <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">Name</th>
+                            <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">Enabled</th>
+                            <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">Site</th>
+                            <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">Timestamp</th>
+                            <th></th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {% for task in all_tasks.values() %}
+                          <tr>
+                            <td>
+                              <div class="d-flex px-2">
+                                <div>
+                                  <img src="{{ url_for('static', filename='img/bcl/task_item.svg') }}" class="avatar avatar-sm rounded-circle me-2"/>
+                                </div>
+                                <div class="my-auto">
+                                  <h6 class="mb-0 text-xs">{{ task.task_type }}</h6>
+                                </div>
+                              </div>
+                            </td>
+                            <td>
+                              <p class="text-xs font-weight-bold mb-0">{{ task.name }}</p>
+                            </td>
+                            <td>
+                              <div class="d-flex px-2">
+                                <div>
+                                  <img src="{{ url_for('static', filename='img/bcl/'+task.enabled+'.svg') }}" class="avatar avatar-sm rounded-circle me-2"/>
+                                </div>
+                              </div>
+                            </td>
+                            <td>
+                            <td>
+                              <span class="badge badge-dot me-4">
+                                <i class="bg-info"></i>
+                                <span class="text-dark text-xs">{{ task.site }}</span>
+                              </span>
+                            </td>
+                            <td class="align-middle text-center">
+                              <div class="d-flex align-items-center">
+                                <span class="me-2 text-xs">{{ task.timestamp }}</span>
+                              </div>
+                            </td>
+
+                            <td class="align-middle">
+                              <div class="input-group mb-3">
+                                <button type="button" class="btn btn-sm btn-info ms-2 task-toggle-btn"
+                                    data-name="{{ task.name|e }}"
+                                    data-site="{{ task.site|e }}"
+                                    data-prb_id="{{ task.prb_id|e }}"
+                                    data-timestamp="{{ task.timestamp|e }}"
+                                    data-task_type="{{ task.task_type|e }}"
+                                    data-id="{{ task.id }}"
+                                    data-enabled="{{ task.enabled|e }}"
+                                    data-comment="{{ task.comment|e }}">
+                                  Enable/Disable
+                                </button>
+                                <button type="button" class="btn btn-sm btn-info ms-2 task-reschedule-btn"
+                                    data-name="{{ task.name|e }}"
+                                    data-site="{{ task.site|e }}"
+                                    data-prb_id="{{ task.prb_id|e }}"
+                                    data-timestamp="{{ task.timestamp|e }}"
+                                    data-task_type="{{ task.task_type|e }}"
+                                    data-id="{{ task.id }}"
+                                    data-enabled="{{ task.enabled|e }}"
+                                    data-comment="{{ task.comment|e }}">
+                                  Reschedule
+                                </button>
+                                <button type="button" class="btn btn-sm btn-info ms-2 task-delete-btn"
+                                    data-name="{{ task.name|e }}"
+                                    data-site="{{ task.site|e }}"
+                                    data-prb_id="{{ task.prb_id|e }}"
+                                    data-timestamp="{{ task.timestamp|e }}"
+                                    data-task_type="{{ task.task_type|e }}"
+                                    data-id="{{ task.id }}"
+                                    data-enabled="{{ task.enabled|e }}"
+                                    data-comment="{{ task.comment|e }}">
+                                  Delete
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                          {% endfor %}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="card shadow h-100 tool-window" id="tool-task-create" style="display: none; height:100%; overflow-y:auto;">
+                  <div class="card-header pb-0 p-3">
+                    <h6 class="mb-0">Create Task</h6>
+                  </div>
+                  <div class="card-body mb-3">
+                    <ul class="nav nav-tabs" id="myTab" role="tablist">
+                      <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="trcrt-tab" data-bs-toggle="tab" data-bs-target="#trcrt-tab-pane" type="button" role="tab" aria-controls="trcrt-tab-pane" aria-selected="true">Path Discovery</button>
+                      </li>
+                      <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="spdtst-tab" data-bs-toggle="tab" data-bs-target="#spdtst-tab-pane" type="button" role="tab" aria-controls="spdtst-tab-pane" aria-selected="false">Performance Testing</button>
+                      </li>
+                      <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="scan-tab" data-bs-toggle="tab" data-bs-target="#scan-tab-pane" type="button" role="tab" aria-controls="scan-tab-pane" aria-selected="false">Scans & Discovery</button>
+                      </li>
+                      <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="pcap-tab" data-bs-toggle="tab" data-bs-target="#pcap-tab-pane" type="button" role="tab" aria-controls="pcap-tab-pane" aria-selected="false">Packet Capture</button>
+                      </li>
+                    </ul>
+                    <div class="tab-content pt-3" id="myTabContent">
+                      <div class="tab-pane fade show active" id="trcrt-tab-pane" role="tabpanel" aria-labelledby="trcrt-tab" tabindex="0">
+                        <div id="trcrt-tab-content">
+                          <form method="POST">
+                            <div class="form-floating mb-3">
+                              <label class="form-label">Trace Type</label>
+                              <select id="trcrt-dropdown" class="form-select" aria-label="Default select example">
+                                <option value="trcrt">Traceroute</option>
+                                <option value="trcrt_dns">DNS Traceroute</option>
+                              </select>
+                            </div>
+                            <div class="form-floating mb-3">
+                              <label class="form-label">Target</label>
+                              <input type="text" class="form-control" placeholder="Target" id="trcrt-target">
+                            </div>
+                            <div class="form-floating mb-3">
+                              <label class="form-label">Options</label>
+                              <input type="text" class="form-control" id="trcrt-options">
+                              <div class="form-text">traceroute/dnstraceroute command options (optional)</div>
+                            </div>
+                            <div class="form-floating mb-3">
+                              <label class="form-label">DNS Server</label>
+                              <input type="text" class="form-control" placeholder="DNS server to test" id="trcrt-dns-test-server">
+                              <div class="form-text">For dnstraceroute only. Defaults to 8.8.8.8 (optional)</div>
+                            </div>
+                            <div class="form-floating mb-3">
+                              <label class="form-label">Packet Length</label>
+                              <input type="number" class="form-control" placeholder="Enter preferred packet length" id="trcrt-packetlen">
+                              <div class="form-text">For traceroute only (optional)</div>
+                            </div>
+                            <div class="d-grid">
+                              <button type="button" class="btn btn-dark mb-0" id="trcrt-init">
+                                <span class="spinner-grow spinner-grow-sm d-none" role="status" aria-hidden="true"></span>
+                                <span class="prb-tsk-trc-button-text">Start Traceroute</span>
+                              </button>
+                            </div>
+                          </form> 
+                        </div>
+                      </div>
+                      <div class="tab-pane fade" id="spdtst-tab-pane" role="tabpanel" aria-labelledby="spdtst-tab" tabindex="0">
+                        <div id="spdtst-tab-content">
+                          <form method="POST">
+                            <div class="form-floating mb-3">
+                              <label class="form-label">Endpoint Type</label>
+                              <select id="spdtst-dropdown" class="form-select">
+                                <option value="spdtst_srvr">Server Mode</option>
+                                <option value="spdtst_clnt">Client Mode</option>
+                              </select>
+                            </div>
+                            <div class="form-floating mb-3">
+                              <label class="form-label">Options</label>
+                              <input type="text" class="form-control" id="spdtst-options">
+                              <div class="form-text">iperf command options (optional)</div>
+                            </div>
+                            <div class="form-floating mb-3">
+                              <label class="form-label">Server Endpoint</label>
+                              <input type="text" class="form-control" id="spdtst-clnt-options">
+                              <div class="form-text">NOTICE: For probes set in Client mode only</div>
+                            </div>
+                            <div class="d-grid">
+                              <button type="button" class="btn btn-dark mb-0" id="iperf-init">
+                                <span class="spinner-grow spinner-grow-sm d-none" role="status" aria-hidden="true"></span>
+                                <span class="prb-tsk-spd-button-text">Start Performance Test</span>
+                              </button>
+                            </div>
+                          </form>
+                        </div>
+                      </div>
+                      <div class="tab-pane fade" id="scan-tab-pane" role="tabpanel" aria-labelledby="scan-tab" tabindex="0">
+                        <div id="scan-tab-content">
+                          <form method="POST">
+                            <div class="form-floating mb-3">
+                              <div class="row">
+                                <div class="col-6">
+                                  <label class="form-label">Available Interfaces (Local Only)</label>
+                                  <select id="scan-ifaces-select" class="form-select"></select>
+                                </div>
+                                <div class="col-6">
+                                  <label class="form-label">Select Scan Type</label>
+                                  <select class="form-select" id="scan-type-select" aria-label="Select Scan Type">
+                                    <option value="scan_arp">ARP Scan</option>
+                                    <option value="scan_custom">Custom Scan</option>
+                                    <option value="scan_dev_id">Device Identification Scan</option> 
+                                    <option value="scan_dev_fngr">Device Fingerprint Scan</option>
+                                    <option value="scan_full">Full Network Scan</option>
+                                    <option value="scan_snmp">SNMP Scan</option>
+                                    <option value="scan_port">Port Scan</option>
+                                  </select>
+                                </div>
+                              </div>
+                            </div>
+                            <div class="form-floating mb-3">
+                              <div class="row">
+                                <div class="col-6">
+                                  <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" role="switch" id="scan-fplimit-switch">
+                                    <label class="form-check-label" for="scan-fplimit-switch">Limit Fingerprint Scan</label>
+                                  </div>
+                                </div>
+                                <div class="col-6">
+                                  <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" role="switch" id="scan-devid-noise-switch">
+                                    <label class="form-check-label" for="scan-devid-noise-switch">Reduce Device Identification Scan Noise</label>
+                                  </div>
+                                </div>
+                              </div>
+                              <div class="row">
+                                <div class="col-6">
+                                  <label class="form-label">SNMP scripts</label>
+                                  <input type="text" class="form-control" placeholder="scripts" id="scan-snmp-scripts">
+                                  <p class="form-text">For SNMP Scan only. Enter comma-separated nmap SNMP scripts to run (optional)</p>
+                                </div>
+                                <div class="col-6">
+                                  <label class="form-label">Ports to scan</label>
+                                  <input type="text" class="form-control" placeholder="ports" id="scan-ports">
+                                  <p class="form-text">For Port Scan only. Enter comma-separated ports to scan (optional)</p>
+                                </div>
+                              </div>
+                            </div>
+                            <div class="form-floating mb-3">
+                              <label class="form-label">Target Subnet/IP</label>
+                              <input type="text" class="form-control" id="scan-target">
+                            </div>
+                            <div class="form-floating mb-3">
+                              <label class="form-label">Command Options</label>
+                              <input type="text" class="form-control" id="scan-options" >
+                              <div class="form-text" id="scan-addon4">Options for the scan command</div>
+                            </div>
+                            <div class="d-grid">
+                              <button type="button" class="btn btn-dark mb-0" id="scan-init">
+                                <span class="spinner-grow spinner-grow-sm d-none" role="status" aria-hidden="true"></span>
+                                <span class="prb-tsk-scn-button-text">Start Scan</span>
+                              </button>
+                            </div>
+                          </form>
+                        </div>
+                      </div>
+                      <div class="tab-pane fade" id="pcap-tab-pane" role="tabpanel" aria-labelledby="pcap-tab" tabindex="0">
+                        <div id="pcap-tab-content">
+                          <form method="POST">
+                            <div class="form-floating mb-3">
+                              <div class="row mb-3">
+                                <div class="col-6">
+                                  <label class="form-label">Available Interfaces (Local Only)</label>
+                                  <select class="form-select" id="pcap-ifaces-select" aria-label="Available Interfaces (Local Only)"></select>
+                                </div>
+                                <div class="col-6">
+                                  <label class="form-label">Capture Mode</label>
+                                  <select class="form-select" id="pcap-dropdown" aria-label="Capture Mode">
+                                    <option value="pcap_lcl">Local Capture</option>
+                                    <option value="pcap_tux">Remote Linux Capture</option>
+                                    <option value="pcap_win">Remote Windows Capture</option>
+                                  </select>
+                                </div>
+                              </div>
+                              <div class="row mb-3">
+                                <div class="col-4">
+                                  <label class="form-label">Remote Host</label>
+                                  <input type="text" class="form-control" id="pcap-remote-host-input" placeholder="IP of remote host for capture">
+                                </div>
+                                <div class="col-4">
+                                  <label class="form-label">Remote User</label>
+                                  <input type="text" class="form-control" id="pcap-remote-user-input" placeholder="Username for remote host">
+                                </div>
+                                <div class="col-4">
+                                  <label class="form-label">Remote Password</label>
+                                  <input type="password" class="form-control" id="pcap-remote-pass-input" placeholder="Password for remote host">
+                                </div>
+                              </div>
+                            </div>
+                            <div class="form-floating mb-3">
+                              <label class="form-label">Capture Count (Linux & Local only)</label>
+                              <input type="number" class="form-control" placeholder="The number of packets to capture" id="pcap-count-target">
+                            </div>
+                            <div class="form-floating mb-3">
+                              <label class="form-label">Capture Duration (Windows only)</label>
+                              <input type="number" class="form-control" placeholder="Capture duration in seconds" id="pcap-duration-target">
+                            </div>
+                            <div class="d-grid">
+                              <button type="button" class="btn btn-dark mb-0" id="pcap-init">
+                                <span class="spinner-grow spinner-grow-sm d-none" role="status" aria-hidden="true"></span>
+                                <span class="prb-tsk-pcap-button-text">Start Packet Capture</span>
+                              </button>
+                            </div>
+                          </form>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="card-footer mb-3">
+                    <form method="POST">
+                      <div class="form-floating mb-3">
+                        <h6 class="form-label bold">General Task Settings</h6>
+                        <p class="form-text">Use the options below to specify if and how the task should be scheduled for repeated execution. </p>
+                        <div class="row mb-3">
+                          <div class="col-6">
+                            <div class="form-check form-switch">
+                              <input class="form-check-input" type="checkbox" role="switch" id="smartbotInitSwitch">
+                              <label class="form-check-label" for="smartbotInitSwitch">Enable SmartBot</label>
+                            </div>
+                          </div>
+                          <div class="col-6">
+                            <div class="form-check form-switch">
+                              <input class="form-check-input" type="checkbox" role="switch" id="flowbotInitSwitch">
+                              <label class="form-check-label" for="flowbotInitSwitch">Enable FlowBot</label>
+                            </div>
+                          </div>
+                        </div>
+                        <div class="row mb-3">
+                          <div class="col-12">
+                            <input class="form-control" type="text" id="task-llm-query" placeholder="Tell the agent what to do with the results of this task. For example, 'Analyze the traceroute results and provide insights on potential network issues.'">
+                          </div>
+                        </div>
+                      </div>
+                      <div class="form-floating mb-3">
+                        <h6 class="form-label bold">Set Task Run Schedule</h6>
+                        <p class="form-text">Use the fields below to set up a custom schedule for the selected task. Enter times as comma-separated values or ranges. If no schedule is set, the task will run once immediately after creation.</p>
+                        <div class="row mb-3">
+                            <div class="col-12">
+                              <label class="form-label">Choose day(s) of week to run task. Available values: 0 (Sunday) to 6 (Saturday).</label>
+                              <input class="form-control" type="text" id="task-days">
+                              <div class="form-text">To run every Sunday, Wednesday and Saturday enter as such: 0,3,6.</div>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                          <div class="col-12">
+                              <label class="form-label">Choose minute(s) to run task. Available values: 0 to 59.</label>
+                              <input class="form-control" type="text" id="task-minutes">
+                              <div class="form-text">For specific intervals, enter start,end,interval (e.g., 5,50,5). The task would run every 5 minutes from 5 to 50. </div> 
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                          <div class="col-12">
+                              <label class="form-label">Choose day(s) of month to run task. Available values: 1 to 31.</label>
+                              <input class="form-control" type="text" id="task-dom">
+                              <div class="form-text">For specific intervals, enter start,end,interval (e.g., 1,31,1). The task would run every day from 1 to 31. </div> 
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                          <div class="col-12">
+                              <label class="form-label">Choose month(s) to run task. Available values: 1 to 12.</label>
+                              <input class="form-control" type="text" id="task-months">
+                              <div class="form-text">For specific intervals, enter start,end,interval (e.g., 1,12,1). The task would run every month from January to December. </div> 
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                          <div class="col-12">
+                              <label class="form-label">Choose hour(s) to run task. Available values: 0 to 23.</label>
+                              <input class="form-control" type="text" id="task-hours">
+                              <div class="form-text">For specific intervals, enter start,end,interval (e.g., 0,23,1). The task would run every hour from 0 to 23. </div> 
+                            </div>  
+                        </div>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div> 
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="taskToggleModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="taskToggleModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="taskToggleModalLabel">Toggle Task</h5>
+        <div id="task-toggle-id-holder"></div>
+        <div id="task-toggle-comment-holder"></div>
+        <div id="task-toggle-enabled-holder"></div>
+        <div id="task-toggle-name-holder"></div>
+        <div id="task-toggle-type-holder"></div>
+        <div id="task-toggle-site-holder"></div>
+        <div id="task-toggle-timestamp-holder"></div>
+        <div id="task-toggle-prb_id-holder"></div>
+       
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p id="task-toggle-msg"></p>
+      
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-danger" data-bs-dismiss="modal" id="task-toggle-init">
+          <span class="spinner-grow spinner-grow-sm d-none" role="status" aria-hidden="true"></span>
+          <span class="tsk-enable-button-text">Enable/Disable</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="taskRescheduleModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="taskRescheduleModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="taskRescheduleModalLabel">Reschedule Task</h5>
+        <div id="task-reschedule-id-holder"></div>
+        <div id="task-reschedule-comment-holder"></div>
+        <div id="task-reschedule-enabled-holder"></div>
+        <div id="task-reschedule-name-holder"></div>
+        <div id="task-reschedule-type-holder"></div>
+        <div id="task-reschedule-site-holder"></div>
+        <div id="task-reschedule-timestamp-holder"></div>
+        <div id="task-reschedule-prb_id-holder"></div>
+       
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form method="POST">
+          <div class="form-floating mb-3">
+            <h6 class="form-label bold">Task Schedule Settings</h6>
+            <div class="row mb-3">
+              <div class="col-6">
+                <div class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" role="switch" id="smartbotSwitch">
+                  <label class="form-check-label" for="smartbotSwitch">Send to SmartBot for analysis</label>
+                </div>
+              </div>
+              <div class="col-6">
+                <div class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" role="switch" id="flowbotSwitch">
+                  <label class="form-check-label" for="flowbotSwitch">Create FlowBot agentic workflow</label>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="form-floating mb-3">
+            <h6 class="form-label bold">Task Run Schedule</h6>
+            <p class="form-text">Use the fields below to set up a custom schedule for the selected task. Enter times ascomma-separated values or ranges.</p>
+            <div class="row mb-3">
+                <div class="col-12">
+                  <label class="form-label">Choose day(s) of week to run task. Available values: 0 (Sunday) to 6 (Saturday).</label>
+                  <input class="form-control" type="text" id="task-reschedule-days">
+                  <div class="form-text">To run every Sunday, Wednesday and Saturday enter as such: 0,3,6.</div>
+                </div>
+            </div>
+            <div class="row mb-3">
+              <div class="col-12">
+                  <label class="form-label">Choose minute(s) to run task. Available values: 0 to 59.</label>
+                  <input class="form-control" type="text" id="task-reschedule-minutes">
+                  <div class="form-text">For specific intervals, enter start,end,interval (e.g., 5,50,5). The task would run every 5 minutes from 5 to 50. </div> 
+                </div>
+            </div>
+            <div class="row mb-3">
+              <div class="col-12">
+                  <label class="form-label">Choose day(s) of month to run task. Available values: 1 to 31.</label>
+                  <input class="form-control" type="text" id="task-reschedule-dom">
+                  <div class="form-text">For specific intervals, enter start,end,interval (e.g., 1,31,1). The task would run every day from 1 to 31. </div> 
+                </div>
+            </div>
+            <div class="row mb-3">
+              <div class="col-12">
+                  <label class="form-label">Choose month(s) to run task. Available values: 1 to 12.</label>
+                  <input class="form-control" type="text" id="task-reschedule-months">
+                  <div class="form-text">For specific intervals, enter start,end,interval (e.g., 1,12,1). The task would run every month from January to December. </div> 
+                </div>
+            </div>
+            <div class="row mb-3">
+              <div class="col-12">
+                  <label class="form-label">Choose hour(s) to run task. Available values: 0 to 23.</label>
+                  <input class="form-control" type="text" id="task-reschedule-hours">
+                  <div class="form-text">For specific intervals, enter start,end,interval (e.g., 0,23,1). The task would run every hour from 0 to 23. </div> 
+                </div>  
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-danger" data-bs-dismiss="modal" id="task-reschedule-init">
+          <span class="spinner-grow spinner-grow-sm d-none" role="status" aria-hidden="true"></span>
+          <span class="tsk-reschedule-button-text">Reschedule</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="taskDeleteModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="taskDeleteModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="taskDeleteModalLabel">Delete Task</h5>
+        <div id="task-delete-id-holder"></div>
+        <div id="task-delete-comment-holder"></div>
+        <div id="task-delete-enabled-holder"></div>
+        <div id="task-delete-name-holder"></div>
+        <div id="task-delete-type-holder"></div>
+        <div id="task-delete-site-holder"></div>
+        <div id="task-delete-timestamp-holder"></div>
+        <div id="task-delete-prb_id-holder"></div>
+       
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p id="task-delete-msg"></p>
+      
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-danger" data-bs-dismiss="modal" id="task-delete-init">Delete</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="flowEditModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="editFlowModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="editFlowModalLabel">Edit Flow</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p class="form-text" id="edit-flow-text">Are you sure you want to edit this flow?</p>
+        <div id="flow-edit-id-holder"></div>
+        <div id="flow-edit-probe-holder"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-primary" id="edit-flow">Edit</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="flowDeleteModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="deleteFlowModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="deleteFlowModalLabel">Delete</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p class="form-text" id="delete-flow-text">Are you sure you want to delete this flow?</p>
+        <div id="flow-delete-id-holder"></div>
+        <div id="flow-delete-probe-holder"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-primary" id="delete-flow">Delete</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="text/javascript">
+    const curUser = "{{ cur_usr }}";
+    const mntrURL = "{{ mntr_url }}";
+    let selectedProbeTool = document.getElementById("tool-list");
+    const notificationModal = new bootstrap.Modal(document.getElementById('notificationModal'), {});
+
+    // Task action buttons
+    const taskToggleButtons = document.querySelectorAll(".task-toggle-btn");
+    const taskRescheduleButtons = document.querySelectorAll(".task-reschedule-btn");
+    const taskDeleteButtons = document.querySelectorAll(".task-delete-btn");
+    
+    // Netmap action buttons
+    const viewTraceButton = document.getElementById('view-trace-button');
+    const viewPerfButton = document.getElementById('view-perf-button');
+    const viewScanButton = document.getElementById('view-scan-button');
+    const viewPcapButton = document.getElementById('view-pcap-button');
+
+    // Flow action buttons
+    const flowDeleteButtons = document.querySelectorAll('.flow-delete-btn');
+    const flowEditButtons = document.querySelectorAll('.flow-edit-btn');
+    const deleteFlowButton = document.getElementById('delete-flow');
+    const editFlowButton = document.getElementById('edit-flow');
+
+    // Flow modal text elements
+    const editFlowText = document.getElementById('edit-flow-text');
+    const deleteFlowText = document.getElementById('delete-flow-text');
+    const editFlowLabel = document.getElementById('editFlowModalLabel');
+    const deleteFlowLabel = document.getElementById('deleteFlowModalLabel');
+
+    // Tasks Modals
+    const taskToggleModal = new bootstrap.Modal(document.getElementById('taskToggleModal'));
+    const taskRescheduleModal = new bootstrap.Modal(document.getElementById('taskRescheduleModal'));
+    const taskDeleteModal = new bootstrap.Modal(document.getElementById('taskDeleteModal'));
+
+    // Flow tasks modals
+    const flowDeleteModal = new bootstrap.Modal(document.getElementById('flowDeleteModal'));
+    const flowEditModal = new bootstrap.Modal(document.getElementById('flowEditModal'));
+
+    flowEditButtons.forEach(button => {
+      button.addEventListener('click', async (e) => {
+        e.stopPropagation()
+        const id = button.dataset.id || '';
+        const name = button.dataset.name || '';
+        const probe = button.dataset.probe || '';
+        editFlowLabel.textContent = `Edit Flow: ${name}`;
+        editFlowText.textContent = `Are you sure you want to edit flow '${name}' on probe '${probe}'?`;
+        flowEditModal.show();
+      });
+    });
+
+    flowDeleteButtons.forEach(button => {
+      button.addEventListener('click', (e) => {
+        e.stopPropagation()
+        const id = button.dataset.id || '';
+        const name = button.dataset.name || '';
+        const probe = button.dataset.probe || '';
+        deleteFlowText.textContent = `Are you sure you want to delete flow '${name}' on probe '${probe}'?`;
+        deleteFlowLabel.textContent = `Delete Flow: ${name}`;
+        flowDeleteModal.show();
+      });
+    });
+
+    taskToggleButtons.forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation(); // prevent row click selection (if undesired)
+        const name = btn.dataset.name || '';
+        const site = btn.dataset.site || '';
+        const prb_id = btn.dataset.prb_id || '';
+        const timestamp = btn.dataset.timestamp || '';
+        const task_type = btn.dataset.task_type || '';
+        const enabled = btn.dataset.enabled || '';
+        const comment = btn.dataset.comment || '';
+        const id = btn.dataset.id || '';
+        // Fill modal fields
+        document.getElementById('taskToggleModalLabel').textContent = `Toggle Task - ${name} ${task_type}`;
+        document.getElementById('task-toggle-msg').textContent = `Are you sure you want to toggle the task: ${name} currently set to ${enabled}`;
+        document.getElementById('task-toggle-id-holder').dataset.id = id;
+        document.getElementById('task-toggle-comment-holder').dataset.comment = comment;
+        document.getElementById('task-toggle-enabled-holder').dataset.enabled = enabled;
+        document.getElementById('task-toggle-name-holder').dataset.name = name;
+        document.getElementById('task-toggle-type-holder').dataset.type = task_type;
+        document.getElementById('task-toggle-site-holder').dataset.site = site;
+        document.getElementById('task-toggle-timestamp-holder').dataset.timestamp = timestamp;
+        document.getElementById('task-toggle-prb_id-holder').dataset.prb_id = prb_id;
+        if (taskToggleModal) {
+          taskToggleModal.show();
+        } else {
+          console.warn("Bootstrap Modal not available - cannot show task toggle modal.");
+        }
+      });
+    });
+
+    taskRescheduleButtons.forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation(); // prevent row click selection (if undesired)
+        const name = btn.dataset.name || '';
+        const site = btn.dataset.site || '';
+        const prb_id = btn.dataset.prb_id || '';
+        const timestamp = btn.dataset.timestamp || '';
+        const task_type = btn.dataset.task_type || '';
+        const enabled = btn.dataset.enabled || '';
+        const comment = btn.dataset.comment || '';
+        const id = btn.dataset.id || '';
+        // Fill modal fields
+        document.getElementById('taskRescheduleModalLabel').textContent = `Reschedule Task - ${name} ${task_type}`;
+        document.getElementById('task-reschedule-id-holder').dataset.id = id;
+        document.getElementById('task-reschedule-comment-holder').dataset.comment = comment;
+        document.getElementById('task-reschedule-enabled-holder').dataset.enabled = enabled;
+        document.getElementById('task-reschedule-name-holder').dataset.name = name;
+        document.getElementById('task-reschedule-type-holder').dataset.type = task_type;
+        document.getElementById('task-reschedule-site-holder').dataset.site = site;
+        document.getElementById('task-reschedule-timestamp-holder').dataset.timestamp = timestamp;
+        document.getElementById('task-reschedule-prb_id-holder').dataset.prb_id = prb_id;
+        // You can also fill in the current schedule settings if needed
+        if (taskRescheduleModal) {
+          taskRescheduleModal.show();
+        } else {
+          console.warn("Bootstrap Modal not available - cannot show task reschedule modal.");
+        }
+      });
+    }); 
+
+    taskDeleteButtons.forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation(); // prevent row click selection (if undesired)
+        const name = btn.dataset.name || '';
+        const site = btn.dataset.site || '';
+        const prb_id = btn.dataset.prb_id || '';
+        const timestamp = btn.dataset.timestamp || '';
+        const task_type = btn.dataset.task_type || '';
+        const enabled = btn.dataset.enabled || '';
+        const comment = btn.dataset.comment || '';
+        const id = btn.dataset.id || '';
+        // Fill modal fields
+        document.getElementById('taskDeleteModalLabel').textContent = `Delete Task - ${name} ${task_type}`;
+        document.getElementById('task-delete-msg').textContent = `Are you sure you want to delete the task: ${name} currently set to ${enabled}`;
+        document.getElementById('task-delete-id-holder').dataset.id = id;
+        document.getElementById('task-delete-comment-holder').dataset.comment = comment;
+        document.getElementById('task-delete-enabled-holder').dataset.enabled = enabled;
+        document.getElementById('task-delete-name-holder').dataset.name = name;
+        document.getElementById('task-delete-type-holder').dataset.type = task_type;
+        document.getElementById('task-delete-site-holder').dataset.site = site;
+        document.getElementById('task-delete-timestamp-holder').dataset.timestamp = timestamp;
+        document.getElementById('task-delete-prb_id-holder').dataset.prb_id = prb_id;
+        if (taskDeleteModal) {
+          taskDeleteModal.show();
+        } else {
+          console.warn("Bootstrap Modal not available - cannot show task delete modal.");
+        }
+      });
+    }); 
+
+    deleteFlowButton.addEventListener('click', async function() {
+      const id = flowDeleteIdHolder.dataset.id;
+      const probe = flowDeleteProbeHolder.dataset.probe;
+      const payload = { id: id, probe: probe };
+
+      try {
+        const resp = await fetch(`https://${mntrURL}/flowdelete?usr=${curUser}`, {method: 'POST', credentials: "same-origin", headers: {"Content-Type": "application/json"}, body: JSON.stringify(payload)});
+
+        if (resp.ok) {
+          const j = await resp.json()
+          alert(`Flow delete executed successfully.\n`+JSON.stringify(j));
+        } else {
+          alert(`Flow delete failed.`);
+        }
+      } catch (err) {
+        console.error('Network or server error:', err);
+      }
+    });
+
+    editFlowButton.addEventListener('click', async function() {
+      const id = flowEditIdHolder.dataset.id;
+      const probe = flowEditProbeHolder.dataset.probe;
+      const name  = flowEditNameHolder.dataset.name;
+
+      const data = editor.export();
+      alert(savename);
+      const flow = JSON.stringify(data, null,4)
+      const payload = { id: id, flow: flow, probe: probe, unm: "{{ user }}" , name: name}
+
+      try {
+        const resp = await fetch(`https://${mntrURL}/flowedit?usr=${curUser}`, {method: 'POST', credentials: "same-origin", headers: {"Content-Type": "application/json"}, body: JSON.stringify(payload)});
+
+        if (resp.ok) {
+          const j = await resp.json()
+          alert(`Flow edit executed successfully.\n`+JSON.stringify(j));
+        } else {
+          alert(`Flow edit failed.`);
+        }
+      } catch (err) {
+        console.error('Network or server error:', err);
+      }
+    });
+
+    viewTraceButton.addEventListener('click', async function () {
+      const selectedTrace = document.getElementById('trace-type-select').dataset.value;
+      
+    });
+
+
+
+    function showToolWindow(type) {
+      document.querySelectorAll(".tool-window").forEach(w => w.style.display = "none");
+      const toolWin = document.getElementById(`tool-${type}`);
+      if (toolWin) toolWin.style.display = "block";
+    }
+
+    // tool window selection
+    document.querySelectorAll("#tool-list li").forEach(li => {
+      li.addEventListener("click", () => {
+        selectedProbeTool.value = li.dataset.value;
+        showToolWindow(selectedProbeTool.value);
+      });
+    });
+</script>
+
+{% endblock %}

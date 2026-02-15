@@ -418,17 +418,33 @@
                         </div>
                       </div>
                       <div class="form-floating mb-3">
+                        <label class="form-label">Target Interface</label>
+                        <input type="text" class="form-control" df-prb-scaniface>
+                        <p class="form-text">Enter target interface for scan (Optional, defaults to primary interface on probe). </p>
+                      </div>
+                      <div class="form-floating mb-3">
+                        <label class="form-label">Target Subnet</label>
+                        <input type="text" class="form-control" df-prb-scansubnet>
+                        <p class="form-text">Enter target in CIDR notation (e.g. 192.168.1.0/24), range of IPs or single IP addresses in comma separated list. (Optional, defaults to subnet of primary interface on probe).</p>
+                      </div>
+                      <div class="form-floating mb-3">
                         <div class="row">
                           <div class="col-6">
                             <div class="form-check form-switch">
-                              <input class="form-check-input" type="checkbox" role="switch" df-prb-scanfplimit>
-                              <label class="form-check-label" for="scan-fplimit-switch">Limit Fingerprint Scan</label>
+                              <label class="form-check-label">Limit Fingerprint Scan</label>
+                              <select class="form-select" df-prb-scanfplimit>
+                                <option value="y">yes</option>
+                                <option value="n">no</option>
+                              </select>
                             </div>
                           </div>
                           <div class="col-6">
                             <div class="form-check form-switch">
-                              <input class="form-check-input" type="checkbox" role="switch" df-prb-scandevidnoise>
-                              <label class="form-check-label" for="scan-devid-noise-switch">Reduce Device Identification Scan Noise</label>
+                              <label class="form-check-label">Reduce Device Identification Scan Noise</label>
+                              <select class="form-select" df-prb-scandevidnoise>
+                                <option value="y">yes</option>
+                                <option value="n">no</option>
+                              </select>
                             </div>
                           </div>
                         </div>
@@ -446,13 +462,23 @@
                         </div>
                       </div>
                       <div class="form-floating mb-3">
-                        <label class="form-label">Target Subnet/IP</label>
-                        <input type="text" class="form-control" df-prb-scantarget>
-                      </div>
-                      <div class="form-floating mb-3">
-                        <label class="form-label">Command Options</label>
-                        <input type="text" class="form-control" df-prb-scanoptions>
-                        <div class="form-text" id="scan-addon4">Options for the scan command</div>
+                        <div class="row">
+                          <div class="col-6">
+                            <div class="form-check form-switch">
+                              <label class="form-check-label">SNMP Scan Type</label>
+                              <select class="form-select" df-prb-scansnmptype>
+                                <option value="snmp_opn">Open</option>
+                                <option value="snmp_enum">Enumeration</option>
+                                <option value="snmp_all">All</option>
+                              </select>
+                            </div>
+                          </div>
+                          <div class="col-6">
+                            <label class="form-label">Command Options</label>
+                            <input type="text" class="form-control" df-prb-scanoptions>
+                            <div class="form-text" id="scan-addon4">Options for the scan command</div>
+                          </div>
+                        </div>
                       </div>
                     </form>
                   </div>
@@ -496,8 +522,8 @@
                   </div>              
               </div>
               `;
-          data = { type: 'probe', id: name };
-          editor.addNode('probe', 0, 3, pos_x, pos_y, 'probe', data, probe);
+          data = { type: 'probe', name: name };
+          editor.addNode(name, 0, 3, pos_x, pos_y, name, data, probe);
 
         }
       } else {
@@ -511,7 +537,7 @@
             </div>
             `;
             data = {type: 'alert', name: name}
-            editor.addNode('slack', 1, 0, pos_x, pos_y, 'slack', data, slackchat );
+            editor.addNode(name, 1, 0, pos_x, pos_y, name, data, slackchat );
             break;
           case 'jsm':
             var jira = `
@@ -522,7 +548,7 @@
             </div>
             `;
             data = {type: 'alert', name: name}
-            editor.addNode('jira', 1, 0, pos_x, pos_y, 'jira', data, jira );
+            editor.addNode(name, 1, 0, pos_x, pos_y, name, data, jira );
             break;
           case 'email':
             var email = `
@@ -533,7 +559,7 @@
             </div>
               `;
             data = {type: 'alert', name: name}
-            editor.addNode('email', 1, 0, pos_x, pos_y, 'email', data, email );
+            editor.addNode(name, 1, 0, pos_x, pos_y, name, data, email );
             break;
           case 'scan_arp':
             var arp = `
@@ -544,11 +570,16 @@
                   <label class="form-label">Target Subnet/IP</label>
                   <input type="text" class="form-control" df-arp-target>
                 </div>
+                <div class="form-floating mb-3">
+                  <label class="form-label">Target Interface</label>
+                  <input type="text" class="form-control" df-arp-interface>
+                  <div class="form-text" id="scan-addon4">Enter target interface for scan (Optional, defaults to primary interface on probe).</div>
+                </div>
               </div>
             </div>
               `;
-            data = {type: 'alert', name: name}
-            editor.addNode('arp', 1, 0, pos_x, pos_y, 'arp', data, arp );
+            data = {type: 'tool', name: name}
+            editor.addNode(name, 0, 3, pos_x, pos_y, name, data, arp );
             break;
           case 'scan_custom':
             var arp = `
@@ -567,8 +598,8 @@
               </div>
             </div>
               `;
-            data = {type: 'alert', name: name}
-            editor.addNode('custom', 1, 0, pos_x, pos_y, 'custom', data, arp );
+            data = {type: 'tool', name: name}
+            editor.addNode(name, 0, 3, pos_x, pos_y, name, data, arp );
             break;
           case 'scan_dev_id':
             var arp = `
@@ -590,8 +621,8 @@
               </div>
             </div>
               `;
-            data = {type: 'alert', name: name}
-            editor.addNode('dev_id', 1, 0, pos_x, pos_y, 'dev_id', data, arp );
+            data = {type: 'tool', name: name}
+            editor.addNode(name, 0, 3, pos_x, pos_y, name, data, arp );
             break;
           case 'scan_dev_fngr':
             var arp = `
@@ -613,8 +644,8 @@
               </div>
             </div>
               `;
-            data = {type: 'alert', name: name}
-            editor.addNode('dev_fngr', 1, 0, pos_x, pos_y, 'dev_fngr', data, arp );
+            data = {type: 'tool', name: name}
+            editor.addNode(name, 0, 3, pos_x, pos_y, name, data, arp );
             break;
           case 'scan_full':
             var arp = `
@@ -628,8 +659,8 @@
               </div>
             </div>
               `;
-            data = {type: 'alert', name: name}
-            editor.addNode('full', 1, 0, pos_x, pos_y, 'full', data, arp );
+            data = {type: 'tool', name: name}
+            editor.addNode(name, 0, 3, pos_x, pos_y, name, data, arp );
             break;
           case 'scan_snmp':
             var arp = `
@@ -657,8 +688,8 @@
               </div>
             </div>
               `;
-            data = {type: 'alert', name: name}
-            editor.addNode('snmp', 1, 0, pos_x, pos_y, 'snmp', data, arp );
+            data = {type: 'tool', name: name}
+            editor.addNode(name, 0, 3, pos_x, pos_y, name, data, arp );
             break;
           case 'scan_port':
             var arp = `
@@ -677,8 +708,8 @@
               </div>
             </div>
               `;
-            data = {type: 'alert', name: name}
-            editor.addNode('port', 1, 0, pos_x, pos_y, 'port', data, arp );
+            data = {type: 'tool', name: name}
+            editor.addNode(name, 0, 3, pos_x, pos_y, name, data, arp );
             break;
           case 'test_srvr':
             var tool = `
@@ -782,14 +813,14 @@
                 </div>
                 <div class="form-floating mb-3">
                   <label class="form-label">Capture Count</label>
-                  <input type="number" class="form-control" placeholder="Enter the number of packets to capture" df-pcaplcl-options>
-                  <div class="form-text" id="scan-addon4">Enter the number of packets to capture (optional)</div>
+                  <input type="number" class="form-control" placeholder="Enter the number of packets to capture" df-pcaplcl-count>
+                  <div class="form-text">Enter the number of packets to capture (optional)</div>
                 </div>
               </div>
             </div>
               `;
-            data = {type: 'alert', name: name}
-            editor.addNode('port', 1, 0, pos_x, pos_y, 'port', data, arp );
+            data = {type: 'tool', name: name}
+            editor.addNode(name, 0, 3, pos_x, pos_y, name, data, arp );
             break;
           case 'pcap_tux':
           case 'pcap_win':
@@ -799,30 +830,59 @@
               <div class="box">
                 <div class="form-floating mb-3">
                   <label class="form-label">Remote Interface</label>
-                  <input type="text" class="form-control" df-pcaplcl-iface>
+                  <input type="text" class="form-control" df-pcaprm-iface>
                 </div>
                 <div class="form-floating mb-3">
-                  <label class="form-label">Capture Count</label>
-                  <input type="number" class="form-control" placeholder="Enter the number of packets to capture" df-pcaplcl-options>
-                  <div class="form-text" id="scan-addon4">Enter the number of packets to capture (optional)</div>
+                  <div class="row">
+                    <div class="col-6">
+                      <label class="form-label">Capture Count</label>
+                      <input type="number" class="form-control" placeholder="Enter the number of packets to capture" df-pcaprm-count>
+                      <div class="form-text" id="scan-addon4">Enter the number of packets to capture (optional)</div>
+                    </div>
+                    <div class="col-6">
+                      <label class="form-label">Capture Duration (Windows only)</label>
+                      <input type="number" class="form-control" placeholder="Capture duration in seconds" df-pcaprm-duration>
+                      <div class="form-text" id="scan-addon4">Enter the duration of the capture in seconds (optional, Windows only)</div>
+                    </div>
+                  </div>
                 </div>
                 <div class="form-floating mb-3">
                   <label class="form-label">Remote Host</label>
-                  <input type="text" class="form-control" placeholder="IP of remote host for capture" df-pcaprmhost>
+                  <input type="text" class="form-control" placeholder="IP of remote host for capture" df-pcaprm-host>
                 </div>
                 <div class="form-floating mb-3">
                   <label class="form-label">Remote User</label>
-                  <input type="text" class="form-control" placeholder="Username for remote host" df-pcaprmuser>
+                  <input type="text" class="form-control" placeholder="Username for remote host" df-pcaprm-user>
                 </div>
                 <div class="form-floating mb-3">
                   <label class="form-label">Remote Password</label>
-                  <input type="password" class="form-control" placeholder="Password for remote host" df-pcaprmpass>
+                  <input type="password" class="form-control" placeholder="Password for remote host" df-pcaprm-pass>
                 </div>
               </div>
             </div>
               `;
-            data = {type: 'alert', name: name}
-            editor.addNode('port', 1, 0, pos_x, pos_y, 'port', data, arp );
+            data = {type: 'tool', name: name}
+            editor.addNode(name, 0, 3, pos_x, pos_y, name, data, arp );
+            break;
+          case 'smartbot':
+          case 'flowbot':
+            var bot = `
+            <div>
+              <div class="title-box"><i class="fab fa-telegram-plane"></i>${name === 'smartbot' ? 'Smart Bot' : 'Flow Bot'}</div>
+              <div class="box">
+                <div class="form-floating mb-3">
+                  <label class="form-label">Bot Name</label>
+                  <input type="text" class="form-control" placeholder="Enter a name for this bot..." df-bot-name>
+                </div>
+                <div class="form-floating mb-3">
+                  <label class="form-label">Bot Prompt</label>
+                  <input type="text" class="form-control" placeholder="Enter a prompt for this bot..." df-bot-prompt>
+                </div>
+              </div>
+            </div>
+              `;
+            data = {type: 'agent', name: name}
+            editor.addNode(name, 1, 0, pos_x, pos_y, name, data, bot );
             break;
         }
 

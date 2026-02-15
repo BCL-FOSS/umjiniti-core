@@ -1,5 +1,5 @@
 from init_app import (app)
-from quart import (Request, Websocket, websocket, render_template_string, make_response)
+from quart import (Request, Websocket, websocket, render_template_string)
 import asyncio
 from utils.broker import Broker
 from quart import jsonify
@@ -9,25 +9,21 @@ from init_app import app, logger
 from quart_rate_limiter import rate_exempt
 import os
 from ai.smartbot.utils.RedisDB import RedisDB
-from quart import (websocket, abort, redirect, url_for, render_template, flash, jsonify)
+from quart import (websocket, abort, jsonify)
 import asyncio
 import jwt
 from jwt import ExpiredSignatureError, InvalidTokenError
 import json
 from utils.WSRateLimiter import WSRateLimiter
 from utils.Util import Util
-import redis.asyncio as redis
 from quart import request, jsonify, request, Response
 from passlib.hash import bcrypt
 from quart_auth import Unauthorized
 from passlib.hash import bcrypt
 import asyncio
 import httpx
-import ast
 import secrets
 from datetime import datetime, timedelta, timezone
-from tzlocal import get_localzone
-from ai.smartbot.utils.EmailAlert import EmailAlert
 from onetimesecret import OneTimeSecretCli
 from ai.smartbot.utils.EmailSenderHandler import EmailSenderHandler
 import uuid
@@ -390,7 +386,7 @@ async def _receive() -> None:
                     match message.get('storage_opt'):
                         case 'new':
 
-                            message['timestamep'] = datetime.now(tz=timezone.utc).isoformat()
+                            message['timestamp'] = datetime.now(tz=timezone.utc).isoformat()
                             
                             task_id = f"task:{message['name']}:{message['prb_name']}:{message['timestamp']}"
 
@@ -401,8 +397,6 @@ async def _receive() -> None:
                         case 'updt':
                             if await cl_data_db.upload_db_data(id=message['id'], data=message) > 0:
                                 logger.info(f"Task data updated successfully with id: {message['id']}")
-                        case _:
-                            continue
 
                     message.pop('act')
                     message.pop('storage_opt')
@@ -445,25 +439,12 @@ async def _receive() -> None:
                         message['msg'] = final_output
 
                     message.pop('act')
-                    alert_id = f"alert:{message['alert_type']}:{message['prb_id']}:{message['timestamp']}"
+         
+                    alert_id = f"task:{message['name']}:result:{message['prb_name']}:{message['timestamp']}"
                     message['id'] = alert_id
 
                     if await cl_data_db.upload_db_data(id=alert_id, data=message) > 0:
                         logger.info(f"Task result data uploaded successfully with id: {alert_id}")
-                        await broker.publish(message=json.dumps(message))
-
-                case "prb_exec_rslt":
-                    logger.info(f"Received probe execution result message: {message}.")
-
-                    message['alert_type'] = 'exec_result'
-                    message['msg'] = message['task_output']
-                    message.pop('act')
-
-                    alert_id = f"alert:{message['alert_type']}:{message['task_type']}:{message['prb_id']}:{message['timestamp']}"
-                    message['id'] = alert_id
-                    
-                    if await cl_data_db.upload_db_data(id=alert_id, data=message) > 0:
-                        logger.info(f"Execution result data uploaded successfully with id: {alert_id}")
                         await broker.publish(message=json.dumps(message))
 
                 case _:
@@ -965,70 +946,6 @@ async def delete():
     except Exception as e:
         return jsonify({f'error occurred: {e}'})
         
-@app.route('/v1/api/core/flow/run', methods=['POST'])
-async def flowrun():
-    jwt_token = request.cookies.get("api_access_token")
-    usr = request.args.get('usr')
-
-    if not jwt_token or not usr:
-        await ip_blocker(conn_obj=request)
-        return jsonify(error="Missing required request data"), 400
-    
-    await cl_auth_db.connect_db()
-    await cl_data_db.connect_db() 
-
-    try:
-        if await cl_auth_db.get_all_data(match=f'*uid:{usr}*', cnfrm=True) is False:
-            await ip_blocker(conn_obj=request)
-            abort(401)
-        
-        usr_data = await cl_auth_db.get_all_data(match=f'*uid:{usr}*')
-        logger.info(usr_data)
-        usr_data_dict = next(iter(usr_data.values()))
-        logger.info(usr_data_dict)
-
-        api_data = await cl_data_db.get_all_data(match=f"api_dta:{usr_data_dict.get('db_id')}")
-
-        if api_data is None:
-            await ip_blocker(conn_obj=request)
-            abort(401)
-            
-        api_data_dict = next(iter(api_data.values()))
-        logger.info(api_data_dict)
-
-        jwt_key = api_data_dict.get(f'{api_name}_jwt_secret')
-        logger.info(jwt_key)
-        decoded_token = jwt.decode(jwt=jwt_token, key=jwt_key , algorithms=["HS256"])
-        logger.info(decoded_token)
-
-        if decoded_token.get('rand') != api_data_dict.get(f'{api_name}_rand'):
-            raise InvalidTokenError()
-
-        data = await request.get_json()
-
-        async with httpx.AsyncClient() as client:
-
-            headers = {'content-type': 'application/json'}
-                            
-            run_resp = await client.post(f"{os.environ.get('OLLAMA_PROXY_URL')}/run", json=data, headers=headers, timeout=int(os.environ.get('REQUEST_TIMEOUT')))
-
-            if run_resp.status_code == 200:
-                run_data = await run_resp.json()
-                return jsonify(run_data)
-            else:
-                return jsonify({'status':'error'}), 400
-
-    except ExpiredSignatureError:
-        logger.warning("JWT expired, need to refresh token")
-        await ip_blocker(conn_obj=request)
-        abort(401)
-    except InvalidTokenError as e:
-        logger.error(f"JWT invalid: {e}")
-        await ip_blocker(conn_obj=request)
-        abort(401)
-    except Exception as e:
-        return jsonify({f'error occurred: {e}'})
-        
 @app.route('/v1/api/core/flow/delete', methods=['POST'])
 async def flowdelete():
     jwt_token = request.cookies.get("api_access_token")
@@ -1076,7 +993,7 @@ async def flowdelete():
             del_resp = await client.post(f"{os.environ.get('OLLAMA_PROXY_URL')}/delete", json=data, headers=headers, timeout=int(os.environ.get('REQUEST_TIMEOUT')))
 
             if del_resp.status_code == 200:
-                del_data = await del_resp.json()
+                del_data = del_resp.json()
                 return jsonify(del_data)
             else:
                 return jsonify({'status':'error'}), 400
@@ -1141,7 +1058,7 @@ async def flowsave():
             save_resp = await client.post(f"{os.environ.get('OLLAMA_PROXY_URL')}/save", json=data, headers=headers, timeout=int(os.environ.get('REQUEST_TIMEOUT')))
 
             if save_resp.status_code == 200:
-                save_data = await save_resp.json()
+                save_data = save_resp.json()
                 return jsonify(save_data)
             else:
                 return jsonify({'status':'error'}), 400
@@ -1201,7 +1118,7 @@ async def flowload():
             load_resp = await client.post(f"{os.environ.get('OLLAMA_PROXY_URL')}/load", json=data, headers=headers, timeout=int(os.environ.get('REQUEST_TIMEOUT')))
 
             if load_resp.status_code == 200:
-                load_data = await load_resp.json()
+                load_data = load_resp.json()
                 #await load_resp.aclose()
                 return jsonify(load_data)
             else:
@@ -1262,7 +1179,7 @@ async def flowedit():
             edit_resp = await client.post(f"{os.environ.get('OLLAMA_PROXY_URL')}/edit", json=data, headers=headers, timeout=int(os.environ.get('REQUEST_TIMEOUT')))
 
             if edit_resp.status_code == 200:
-                edit_data = await edit_resp.json()
+                edit_data = edit_resp.json()
                 return jsonify(edit_data)
             else:
                 return jsonify({'status':'error'}), 400
@@ -1438,73 +1355,6 @@ async def createapi():
         return InvalidTokenError()
     except Exception:
         return jsonify("Error, occurred"), 400
-    
-@app.route('/v1/api/core/user/notifications', methods=['POST'])
-async def notifications():
-    jwt_token = request.cookies.get("access_token")
-    sess_id = request.args.get('sess_id')
-
-    if not jwt_token or not sess_id:
-        await ip_blocker(conn_obj=request)
-        return jsonify(error="Missing required request data"), 400
-    
-    await cl_sess_db.connect_db()
-
-    if await cl_sess_db.get_all_data(match=f'*{sess_id}*', cnfrm=True) is False:
-        await ip_blocker(conn_obj=request)
-        return Unauthorized()
-    
-    try:
-        usr_sess_data = await cl_sess_db.get_all_data(match=f'*{sess_id}*')
-        logger.info(usr_sess_data)
-        usr_data_dict = next(iter(usr_sess_data.values()))
-        logger.info(usr_data_dict)
-
-        jwt_key = usr_data_dict.get(f'usr_jwt_secret')
-        logger.info(jwt_key)
-        decoded_token = jwt.decode(jwt=jwt_token, key=jwt_key , algorithms=["HS256"])
-        logger.info(decoded_token)
-
-        if decoded_token.get('rand') != usr_data_dict.get(f'usr_rand'):
-            await ip_blocker(conn_obj=request)
-            return Unauthorized()
-        
-        data = await request.get_json()
-        logger.info(data)
-
-        count_id = util_obj.key_gen(size=10)
-
-        if await cl_data_db.get_all_data(match=f"alrt:{data['type']}*", cnfrm=True) is False:
-            data['is_primary'] = True
-
-        if data['type'] == 'slack':
-            data['id'] = f"alrt:{data['type']}:{data['channel_id']}:{count_id}"
-
-        if data['type'] == 'jira':
-            data['id'] = f"alrt:{data['type']}:{data['email']}:{count_id}"
-
-        if data['type'] == 'email':
-            data['id'] = f"alrt:{data['type']}:{data['email']}:{count_id}"
-
-            new_contact_result = await run_sync(lambda: email_sender_handler.add_contact(email=data['email'],
-                                                                ext_id=data['id']))()
-            logger.info(f"New contact creation result for email alert config: {new_contact_result}")
-
-        if await cl_data_db.upload_db_data(id=data['id'], data=data) > 0:
-            return jsonify({'status':' alert config received'}), 200
-        else:
-            return jsonify({'status':'alert config upload failed'}), 400
-
-    except ExpiredSignatureError:
-        logger.warning("JWT expired, need to refresh token")
-        await ip_blocker(conn_obj=request)
-        return ExpiredSignatureError()
-    except InvalidTokenError as e:
-        logger.error(f"JWT invalid: {e}")
-        await ip_blocker(conn_obj=request)
-        return InvalidTokenError()
-    except Exception():
-        return jsonify("Error, occurred"), 400
 
 @app.route('/v1/api/core/user/alerts', methods=['POST'])
 async def alerts():
@@ -1561,8 +1411,106 @@ async def alerts():
         return InvalidTokenError()
     except Exception():
         return jsonify("Error, occurred"), 400
+       
+@app.route('/v1/api/core/probes/<string:prb_id>/exec', methods=['POST'])
+async def exec(prb_id):
+    logger.info(request.args)
 
-    
+    api_key = request.headers.get("X-UMJ-WFLW-API-KEY")
+    usr = request.args.get('usr')
+    jwt_token = request.cookies.get('access_token')
+
+    if not api_key or not usr or not jwt_token:
+        await ip_blocker(conn_obj=request)
+        abort(401)
+        
+    await cl_auth_db.connect_db()
+    await cl_data_db.connect_db()
+
+    try:
+
+        if await cl_auth_db.get_all_data(match=f'*uid:{usr}*', cnfrm=True) is False:
+            await ip_blocker(conn_obj=request)
+            abort(401)
+        
+        usr_data = await cl_auth_db.get_all_data(match=f'*uid:{usr}*')
+        logger.info(usr_data)
+        usr_data_dict = next(iter(usr_data.values()))
+        logger.info(usr_data_dict)
+
+        api_data = await cl_data_db.get_all_data(match=f"api_dta:{usr_data_dict.get('db_id')}")
+
+        if api_data is None:
+            await ip_blocker(conn_obj=request)
+            abort(401)
+            
+        api_data_dict = next(iter(api_data.values()))
+        logger.info(api_data_dict)
+
+        jwt_key = api_data_dict.get(f'{api_name}_jwt_secret')
+        logger.info(jwt_key)
+        decoded_token = jwt.decode(jwt=jwt_token, key=jwt_key , algorithms=["HS256"])
+        logger.info(decoded_token)
+
+        if decoded_token.get('rand') != api_data_dict.get(f'{api_name}_rand') or bcrypt.verify(api_key,api_data_dict.get(api_name)) is False:
+            raise InvalidTokenError()
+        
+        data = await request.get_json()
+
+        if not data['prb_id']:
+            await ip_blocker(conn_obj=request)
+            abort(401)
+
+        await cl_data_db.connect_db()
+        if await cl_data_db.get_all_data(match=f"*{prb_id}*", cnfrm=True) is False:
+            await ip_blocker(conn_obj=request)
+            abort(401)
+
+        prb_data = await cl_data_db.get_all_data(match=f"*{prb_id}*")
+        logger.info(prb_data)
+        prb_data_dict = next(iter(prb_data.values()))
+        logger.info(prb_data_dict)
+
+        async with httpx.AsyncClient() as client:
+            data['prb-api-key'] = prb_data_dict.get('prb_api_key')
+            data['prb-url'] = prb_data_dict.get('url')
+
+            headers = {'content-type': 'application/json'}
+                            
+            exec_resp = await client.post(f"{os.environ.get('OLLAMA_PROXY_URL')}/exec", json=data, headers=headers, timeout=int(os.environ.get('REQUEST_TIMEOUT')))
+
+            if exec_resp.status_code == 200:
+                exec_data = await exec_resp.json()
+                output_message = ""
+                logger.info(f"Request result = {exec_data['output_text']}\n")
+                logger.info(type(exec_data['output_text']))
+
+                exec_data_json = json.loads(exec_data['output_text'])
+
+                for item in exec_data_json:
+                    net_cmd_output = item['output'][1]
+                    logger.info(f"Net command output: {net_cmd_output}")
+                    decoded_output = net_cmd_output.encode('utf-8').decode('unicode_escape')
+                    lines = decoded_output.split('\n')
+
+                    for i, line in enumerate(lines):
+                        net_cmd_data = f'{line}\n'
+                        output_message+=net_cmd_data
+                return jsonify({'output': output_message}), 200
+            else:
+                return jsonify({'status':'error'}), 400
+        
+    except ExpiredSignatureError:
+        logger.warning("JWT expired, need to refresh token")
+        await ip_blocker(conn_obj=request)
+        abort(401)
+    except InvalidTokenError as e:
+        logger.error(f"JWT invalid: {e}")
+        await ip_blocker(conn_obj=request)
+        abort(401)
+    except Exception as e:
+        return jsonify({f'error occurred: {e}'})
+ 
 @app.errorhandler(Unauthorized)
 async def unauthorized():
     await ip_blocker(conn_obj=request)
