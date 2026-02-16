@@ -39,8 +39,6 @@ auth_attempts={}
 reg_attempts={}
 
 async def retrieve_user_sess_data(sess_id):
-    await cl_sess_db.connect_db()
-
     # Retrieve user session data
     cl_sess_data = await cl_sess_db.get_all_data(match=f"{sess_id}")
     cl_sess_data_dict = next(iter(cl_sess_data.values()))
@@ -60,7 +58,6 @@ async def retrieve_user_sess_data(sess_id):
 
 async def ip_blocker(auto_ban: bool = False):
     if auto_ban is True:
-        await ip_ban_db.connect_db()
         now = datetime.now(tz=timezone.utc)
         ban_data = {'ip': request.access_route[-1],
                     'banned_at': now.isoformat()}
@@ -77,7 +74,6 @@ async def ip_blocker(auto_ban: bool = False):
         #await flash(message=f'Try again...', category='danger')
         #return redirect(url_for('login'))
     else:
-        await ip_ban_db.connect_db()
         now = datetime.now(tz=timezone.utc)
         ban_data = {'ip': request.access_route[-1],
                     'banned_at': now.isoformat()}
@@ -89,9 +85,6 @@ async def ip_blocker(auto_ban: bool = False):
 def admin_login_required(func):
     @wraps(func)
     async def wrapper(*args, **kwargs):
-        await cl_sess_db.connect_db()
-        await cl_auth_db.connect_db()
-
         if current_admin.auth_id is not None and await cl_sess_db.get_all_data(match=f"{current_admin.auth_id}", cnfrm=True) is True: 
             admin_data = await cl_sess_db.get_all_data(match=f"{current_admin.auth_id}")
             admin_data_sub_dict = next(iter(admin_data.values()))
@@ -101,9 +94,6 @@ def admin_login_required(func):
 def user_login_required(func):
     @wraps(func)
     async def wrapper(*args, **kwargs):
-        await cl_sess_db.connect_db()
-        await cl_auth_db.connect_db()
-
         auth_id = current_client.auth_id
         jwt_token = request.cookies.get("access_token")
 
@@ -139,6 +129,13 @@ def user_login_required(func):
                     
             return await app.ensure_async(func)(*args, **kwargs)
     return wrapper
+
+@app.before_serving
+async def startup_tasks():
+    await cl_auth_db.connect_db()
+    await cl_sess_db.connect_db()
+    await cl_data_db.connect_db()
+    await ip_ban_db.connect_db()
 
 @app.before_request
 async def check_ip():
@@ -271,8 +268,6 @@ async def register():
             reg_key = form.reg_key.data
             username = form.uname.data.replace(" ", "").lower()
 
-            await cl_auth_db.connect_db()
-
             if await cl_auth_db.get_all_data(match=f"reg_key:{username}:*", cnfrm=True) is False:
                 await ip_blocker()
                 await flash(message=f'Registration failed. Try again.', category='danger')
@@ -347,7 +342,6 @@ async def logout(auth_id):
     try:
         cur_usr_id = auth_id
 
-        await cl_sess_db.connect_db()
         if await cl_sess_db.get_all_data(match=f'{cur_usr_id}', cnfrm=True) is False:
             await ip_blocker()
             return Unauthorized()
@@ -391,10 +385,6 @@ async def dashboard(cmp_id, obsc):
 async def smartbot(cmp_id, obsc):
     cur_usr_id = current_client.auth_id
 
-    await cl_auth_db.connect_db()
-    await cl_sess_db.connect_db()
-    await cl_data_db.connect_db()
-
     user_data, ws_url = await retrieve_user_sess_data(sess_id=cur_usr_id)
 
     probe_data = await cl_data_db.get_all_data(match=f"prb:*")
@@ -419,7 +409,6 @@ async def settings(cmp_id, obsc):
 @user_login_required
 async def floweditor(cmp_id, obsc, flow_id):
     cur_usr_id = current_client.auth_id
-    await cl_data_db.connect_db()
     user_data, ws_url = await retrieve_user_sess_data(sess_id=cur_usr_id)
 
     probe_data = await cl_data_db.get_all_data(match=f"prb:*")
@@ -435,7 +424,6 @@ async def floweditor(cmp_id, obsc, flow_id):
 @user_login_required
 async def probes(cmp_id, obsc):
     cur_usr_id = current_client.auth_id
-    await cl_data_db.connect_db()
     user_data, ws_url = await retrieve_user_sess_data(sess_id=cur_usr_id)
 
     all_probes = await cl_data_db.get_all_data(match=f"prb:*")
@@ -452,7 +440,6 @@ async def probes(cmp_id, obsc):
 @user_login_required
 async def probe(cmp_id, obsc, prb_id):
     cur_usr_id = current_client.auth_id
-    await cl_data_db.connect_db()
     user_data, ws_url = await retrieve_user_sess_data(sess_id=cur_usr_id)
 
     if prb_id != "default":
@@ -482,7 +469,6 @@ async def probe(cmp_id, obsc, prb_id):
 @user_login_required
 async def alerts(cmp_id, obsc):
     cur_usr_id = current_client.auth_id
-    await cl_data_db.connect_db()
     user_data, ws_url = await retrieve_user_sess_data(sess_id=cur_usr_id)
 
     return await render_template("app/alerts.html", obsc_key=session.get('url_key') ,
@@ -493,7 +479,6 @@ async def alerts(cmp_id, obsc):
 @user_login_required
 async def chats(cmp_id, obsc, usr):
     cur_usr_id = current_client.auth_id
-    await cl_data_db.connect_db()
     user_data, ws_url = await retrieve_user_sess_data(sess_id=cur_usr_id)
 
     if usr != "default":
@@ -504,23 +489,42 @@ async def chats(cmp_id, obsc, usr):
     return await render_template("app/chats.html", obsc_key=session.get('url_key') ,
                                   cmp_id=cmp_id, cur_usr_id=cur_usr_id, ws_url=ws_url, cur_usr=user_data.get('unm'), data=user_data, usr=usr, chats=chats)
 
-@app.errorhandler(Unauthorized)
-async def redirect_to_login(*_):
-    return redirect(url_for("login"))
-
 @app.errorhandler(CSRFError)
 async def handle_csrf_error(e):
-    return await render_template('error/csrf_error.html', reason=e.description), 400
+    await ip_blocker()
+    return await render_template_string(json.dumps({"error": "CSRF token error", "reason": str(e)})), 400
+
+@app.errorhandler(Unauthorized)
+async def unauthorized():
+    await ip_blocker()
+    return await render_template_string(json.dumps({"error": "Authentication error"})), 401
+
+@app.errorhandler(jwt.ExpiredSignatureError)
+async def token_expired():
+    await ip_blocker()
+    return await render_template_string(json.dumps({"error": "Token expired"})), 1008
+
+@app.errorhandler(jwt.InvalidTokenError)
+async def invalid_token():
+    await ip_blocker()
+    return await render_template_string(json.dumps({"error": "Invalid token"})), 1000
+
+@app.errorhandler(400)
+async def bad_request():
+    await ip_blocker()
+    return await render_template_string(json.dumps({"error": "Bad Request"})), 400
 
 @app.errorhandler(401)
-async def need_to_login(e):
-    return await render_template("error/401.html"), 401
-
-
+async def need_to_login():
+    await ip_blocker()
+    return await render_template_string(json.dumps({"error": "Authentication error"})), 401
+    
 @app.errorhandler(404)
-async def page_not_found(e):
-    return await render_template("error/404.html"), 404
+async def page_not_found():
+    await ip_blocker()
+    return await render_template_string(json.dumps({"error": "Resource not found"})), 404
 
 @app.errorhandler(500)
 async def handle_internal_error(e):
-    return await render_template_string(json.dumps({"error": "Internal server error"})), 500   
+    await ip_blocker()
+    return await render_template_string(json.dumps({"error": "Internal server error", "reason": str(e)})), 500

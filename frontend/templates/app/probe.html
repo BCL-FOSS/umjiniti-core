@@ -232,6 +232,12 @@
                                       data-probe="{{ flow.probe|e }}">
                                     Edit
                                   </button>
+                                  <button type="button" class="btn btn-sm btn-dark ms-2 flow-schedule-btn"
+                                      data-id="{{ flow.id|e }}"
+                                      data-name="{{ flow.name }}"
+                                      data-probe="{{ flow.probe|e }}">
+                                    Schedule
+                                  </button>
                                   <button class="btn btn-sm btn-outline-danger ms-2 flow-delete-btn"
                                       data-id="{{ flow.id|e }}"
                                       data-name="{{ flow.name }}"

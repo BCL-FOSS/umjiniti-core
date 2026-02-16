@@ -27,6 +27,7 @@ from datetime import datetime, timedelta, timezone
 from onetimesecret import OneTimeSecretCli
 from ai.smartbot.utils.EmailSenderHandler import EmailSenderHandler
 import uuid
+import ast
 
 # Session and Auth Redis DB init
 cl_sess_db = RedisDB(hostname=os.environ.get('CLIENT_SESS_DB'), 
@@ -146,6 +147,78 @@ async def ip_blocker(conn_obj: Request | Websocket, auto_ban: bool = False):
         if await ip_ban_db.upload_db_data(id=f"blocked_ip:{conn_obj.access_route[-1]}", data=ban_data) > 0:
             logger.warning(f"Max authentication attempts reached for {conn_obj.access_route[-1]}. Blocking further attempts.")
             auth_attempts.pop(conn_obj.access_route[-1], None)
+
+async def api_jwt_verification(usr: str, jwt_token: str, request: Request):
+    try:
+        if await cl_auth_db.get_all_data(match=f'*uid:{usr}*', cnfrm=True) is False:
+            await ip_blocker(conn_obj=request)
+            abort(401)
+        
+        usr_data = await cl_auth_db.get_all_data(match=f'*uid:{usr}*')
+        logger.info(usr_data)
+        usr_data_dict = next(iter(usr_data.values()))
+        logger.info(usr_data_dict)
+
+        api_data = await cl_data_db.get_all_data(match=f"api_dta:{usr_data_dict.get('db_id')}")
+
+        if api_data is None:
+            await ip_blocker(conn_obj=request)
+            abort(401)
+            
+        api_data_dict = next(iter(api_data.values()))
+        logger.info(api_data_dict)
+
+        jwt_key = api_data_dict.get(f'{api_name}_jwt_secret')
+        logger.info(jwt_key)
+        decoded_token = jwt.decode(jwt=jwt_token, key=jwt_key , algorithms=["HS256"])
+        logger.info(decoded_token)
+
+        if decoded_token.get('rand') != api_data_dict.get(f'{api_name}_rand'):
+            raise InvalidTokenError()
+
+    except ExpiredSignatureError:
+        logger.warning("JWT expired, need to refresh token")
+        await ip_blocker(conn_obj=request)
+        abort(401)
+    except InvalidTokenError as e:
+        logger.error(f"JWT invalid: {e}")
+        await ip_blocker(conn_obj=request)
+        abort(401)
+    except Exception as e:
+        return jsonify({f'error occurred: {e}'})
+    
+async def usr_jwt_verification(sess_id: str, jwt_token: str, request: Request):
+    try:
+        if await cl_sess_db.get_all_data(match=f'*{sess_id}*', cnfrm=True) is False:
+            await ip_blocker(conn_obj=request)
+            abort(401)
+        
+        usr_sess_data = await cl_sess_db.get_all_data(match=f'*{sess_id}*')
+        logger.info(usr_sess_data)
+        usr_data_dict = next(iter(usr_sess_data.values()))
+        logger.info(usr_data_dict)
+
+        jwt_key = usr_data_dict.get(f'usr_jwt_secret')
+        logger.info(jwt_key)
+        decoded_token = jwt.decode(jwt=jwt_token, key=jwt_key , algorithms=["HS256"])
+        logger.info(decoded_token)
+
+        if decoded_token.get('rand') != usr_data_dict.get(f'usr_rand'):
+            await ip_blocker(conn_obj=request)
+            abort(401)
+
+        return usr_data_dict
+        
+    except ExpiredSignatureError:
+        logger.warning("JWT expired, need to refresh token")
+        await ip_blocker(conn_obj=request)
+        return ExpiredSignatureError()
+    except InvalidTokenError as e:
+        logger.error(f"JWT invalid: {e}")
+        await ip_blocker(conn_obj=request)
+        return InvalidTokenError()
+    except Exception:
+        return jsonify("Error, occurred"), 400
 
 async def _receive() -> None:
     while True:
@@ -557,17 +630,20 @@ async def session_watchdog(sess_id: str, check_interval: float = 5.0):
         except Exception as e:
             logger.exception(f"Error in session_watchdog for {sess_id}: {e}")
 
+@app.before_serving
+async def db_startup():
+    await ip_ban_db.connect_db()
+    await cl_auth_db.connect_db()
+    await cl_sess_db.connect_db()
+    await cl_data_db.connect_db()
+
 @app.before_request
 async def check_ip():
-    await ip_ban_db.connect_db()
-
     if await ip_ban_db.get_all_data(match=f"blocked_ip:{request.access_route[-1]}", cnfrm=True) is True:
         abort(401)
 
 @app.before_websocket
 async def check_ip_ws():
-    await ip_ban_db.connect_db()
-
     if await ip_ban_db.get_all_data(match=f"blocked_ip:{websocket.access_route[-1]}", cnfrm=True) is True:
         try:
             await websocket.close()
@@ -583,9 +659,6 @@ async def heartbeat(probe_id):
             await websocket.close()
 
         monitor_task = None
-
-        await cl_data_db.connect_db()  
-
         if await cl_data_db.get_all_data(match=f"*{probe_id}*", cnfrm=True) is False:
             await ip_blocker(conn_obj=websocket, auto_ban=True)
             await websocket.close()
@@ -673,10 +746,7 @@ async def ws():
 
                 if isinstance(user, str) is False:
                     raise Exception()
-                        
-                await cl_auth_db.connect_db()
-                await cl_sess_db.connect_db()
-
+                
                 if id is not None:
                     if await cl_auth_db.get_all_data(match=f'*uid:{user}*', cnfrm=True) and await cl_sess_db.get_all_data(match=f'{id}', cnfrm=True) is True:
                                 
@@ -760,14 +830,9 @@ async def init():
     usr = request.args.get('usr')
 
     try:
-
         if not api_key or not usr:
             await ip_blocker(conn_obj=request)
             abort(401)
-                
-        await cl_auth_db.connect_db()
-        await cl_data_db.connect_db()
-        await cl_sess_db.connect_db()
 
         if await cl_auth_db.get_all_data(match=f'*{usr}*', cnfrm=True) is False:
             await ip_blocker(conn_obj=request)
@@ -883,535 +948,6 @@ async def enroll():
     except Exception as e:
         return jsonify({f'error occurred: {e}'})
     
-@app.route('/v1/api/core/probe/delete', methods=['POST'])
-async def delete():
-    jwt_token = request.cookies.get("api_access_token")
-    usr = request.args.get('usr')
-
-    if not jwt_token or not usr:
-        await ip_blocker(conn_obj=request)
-        abort(401)
-        
-    await cl_auth_db.connect_db()
-    await cl_data_db.connect_db()
-
-    try:
-        if await cl_auth_db.get_all_data(match=f'*uid:{usr}*', cnfrm=True) is False:
-            await ip_blocker(conn_obj=request)
-            abort(401)
-        
-        usr_data = await cl_auth_db.get_all_data(match=f'*uid:{usr}*')
-        logger.info(usr_data)
-        usr_data_dict = next(iter(usr_data.values()))
-        logger.info(usr_data_dict)
-
-        api_data = await cl_data_db.get_all_data(match=f"api_dta:{usr_data_dict.get('db_id')}")
-
-        if api_data is None:
-            await ip_blocker(conn_obj=request)
-            abort(401)
-            
-        api_data_dict = next(iter(api_data.values()))
-        logger.info(api_data_dict)
-
-        jwt_key = api_data_dict.get(f'{api_name}_jwt_secret')
-        logger.info(jwt_key)
-        decoded_token = jwt.decode(jwt=jwt_token, key=jwt_key , algorithms=["HS256"])
-        logger.info(decoded_token)
-
-        if decoded_token.get('rand') != api_data_dict.get(f'{api_name}_rand'):
-            raise InvalidTokenError()
-            
-        data = await request.get_json()
-        logger.info(data)
-        id = data['id']
-        logger.info(id)
-
-        result = await cl_data_db.del_obj(key=id)
-        logger.info(result)
-
-        if result is None:
-            return jsonify('Probe deletion failed'), 400
-
-        return jsonify('Probe deleted')
-
-    except ExpiredSignatureError:
-        logger.warning("JWT expired, need to refresh token")
-        await ip_blocker(conn_obj=request)
-        abort(401)
-    except InvalidTokenError as e:
-        logger.error(f"JWT invalid: {e}")
-        await ip_blocker(conn_obj=request)
-        abort(401)
-    except Exception as e:
-        return jsonify({f'error occurred: {e}'})
-        
-@app.route('/v1/api/core/flow/delete', methods=['POST'])
-async def flowdelete():
-    jwt_token = request.cookies.get("api_access_token")
-    usr = request.args.get('usr')
-
-    if not jwt_token or not usr:
-        await ip_blocker(conn_obj=request)
-        abort(401)
-    
-    await cl_auth_db.connect_db()
-    await cl_data_db.connect_db()
-
-    try:
-        if await cl_auth_db.get_all_data(match=f'*uid:{usr}*', cnfrm=True) is False:
-            await ip_blocker(conn_obj=request)
-            abort(401)
-        
-        usr_data = await cl_auth_db.get_all_data(match=f'*uid:{usr}*')
-        logger.info(usr_data)
-        usr_data_dict = next(iter(usr_data.values()))
-        logger.info(usr_data_dict)
-
-        api_data = await cl_data_db.get_all_data(match=f"api_dta:{usr_data_dict.get('db_id')}")
-
-        if api_data is None:
-            return jsonify(error="Resource not found"), 404
-            
-        api_data_dict = next(iter(api_data.values()))
-        logger.info(api_data_dict)
-
-        jwt_key = api_data_dict.get(f'{api_name}_jwt_secret')
-        logger.info(jwt_key)
-        decoded_token = jwt.decode(jwt=jwt_token, key=jwt_key , algorithms=["HS256"])
-        logger.info(decoded_token)
-
-        if decoded_token.get('rand') != api_data_dict.get(f'{api_name}_rand'):
-            raise InvalidTokenError()
-            
-        data = await request.get_json()
-
-        async with httpx.AsyncClient() as client:
-
-            headers = {'content-type': 'application/json'}
-                            
-            del_resp = await client.post(f"{os.environ.get('OLLAMA_PROXY_URL')}/delete", json=data, headers=headers, timeout=int(os.environ.get('REQUEST_TIMEOUT')))
-
-            if del_resp.status_code == 200:
-                del_data = del_resp.json()
-                return jsonify(del_data)
-            else:
-                return jsonify({'status':'error'}), 400
-            
-    except ExpiredSignatureError:
-        logger.warning("JWT expired, need to refresh token")
-        await ip_blocker(conn_obj=request)
-        abort(401)
-    except InvalidTokenError as e:
-        logger.error(f"JWT invalid: {e}")
-        await ip_blocker(conn_obj=request)
-        abort(401)
-    except Exception as e:
-        return jsonify({f'error occurred: {e}'})
-        
-@app.route('/v1/api/core/flow/save', methods=['POST'])
-async def flowsave():
-    jwt_token = request.cookies.get("api_access_token")
-    usr = request.args.get('usr')
-
-    if not jwt_token or not usr:
-        await ip_blocker(conn_obj=request)
-        return jsonify(error="Missing required request data"), 400
-
-    await cl_auth_db.connect_db()
-    await cl_data_db.connect_db()
-
-    try:
-
-        if await cl_auth_db.get_all_data(match=f'*uid:{usr}*', cnfrm=True) is False:
-            await ip_blocker(conn_obj=request)
-            return Unauthorized()
-        
-        usr_data = await cl_auth_db.get_all_data(match=f'*uid:{usr}*')
-        logger.info(usr_data)
-        usr_data_dict = next(iter(usr_data.values()))
-        logger.info(usr_data_dict)
-
-        api_data = await cl_data_db.get_all_data(match=f"api_dta:{usr_data_dict.get('db_id')}")
-
-        if api_data is None:
-            return jsonify(error="Resource not found"), 404
-            
-        api_data_dict = next(iter(api_data.values()))
-        logger.info(api_data_dict)
-
-        jwt_key = api_data_dict.get(f'{api_name}_jwt_secret')
-        logger.info(jwt_key)
-        decoded_token = jwt.decode(jwt=jwt_token, key=jwt_key , algorithms=["HS256"])
-        logger.info(decoded_token)
-
-        if decoded_token.get('rand') != api_data_dict.get(f'{api_name}_rand'):
-            await ip_blocker(conn_obj=request)
-            return Unauthorized()
-
-        data = await request.get_json()
-
-        async with httpx.AsyncClient() as client:
-
-            headers = {'content-type': 'application/json'}
-                            
-            save_resp = await client.post(f"{os.environ.get('OLLAMA_PROXY_URL')}/save", json=data, headers=headers, timeout=int(os.environ.get('REQUEST_TIMEOUT')))
-
-            if save_resp.status_code == 200:
-                save_data = save_resp.json()
-                return jsonify(save_data)
-            else:
-                return jsonify({'status':'error'}), 400
-            
-    except ExpiredSignatureError:
-        logger.warning("JWT expired, need to refresh token")
-        return ExpiredSignatureError()
-    except InvalidTokenError as e:
-        logger.error(f"JWT invalid: {e}")
-        return InvalidTokenError()
-        
-@app.route('/v1/api/core/flow/load', methods=['POST'])
-async def flowload():
-    jwt_token = request.cookies.get("api_access_token")
-    usr = request.args.get('usr')
-
-    if not jwt_token or not usr:
-        await ip_blocker(conn_obj=request)
-        return jsonify(error="Missing required request data"), 400
-    
-    await cl_auth_db.connect_db()
-    await cl_data_db.connect_db()
-
-    try:
-        if await cl_auth_db.get_all_data(match=f'*uid:{usr}*', cnfrm=True) is False:
-            await ip_blocker(conn_obj=request)
-            return Unauthorized()
-        
-        usr_data = await cl_auth_db.get_all_data(match=f'*uid:{usr}*')
-        logger.info(usr_data)
-        usr_data_dict = next(iter(usr_data.values()))
-        logger.info(usr_data_dict)
-
-        api_data = await cl_data_db.get_all_data(match=f"api_dta:{usr_data_dict.get('db_id')}")
-
-        if api_data is None:
-            return jsonify(error="Resource not found"), 404
-            
-        api_data_dict = next(iter(api_data.values()))
-        logger.info(api_data_dict)
-
-        jwt_key = api_data_dict.get(f'{api_name}_jwt_secret')
-        logger.info(jwt_key)
-        decoded_token = jwt.decode(jwt=jwt_token, key=jwt_key , algorithms=["HS256"])
-        logger.info(decoded_token)
-
-        if decoded_token.get('rand') != api_data_dict.get(f'{api_name}_rand'):
-            await ip_blocker(conn_obj=request)
-            return Unauthorized()
-            
-        data = await request.get_json()
-
-        async with httpx.AsyncClient() as client:
-
-            headers = {'content-type': 'application/json'}
-                            
-            load_resp = await client.post(f"{os.environ.get('OLLAMA_PROXY_URL')}/load", json=data, headers=headers, timeout=int(os.environ.get('REQUEST_TIMEOUT')))
-
-            if load_resp.status_code == 200:
-                load_data = load_resp.json()
-                #await load_resp.aclose()
-                return jsonify(load_data)
-            else:
-                return jsonify({'status':'error'}), 400
-            
-    except ExpiredSignatureError:
-        logger.warning("JWT expired, need to refresh token")
-        return ExpiredSignatureError()
-    except InvalidTokenError as e:
-        logger.error(f"JWT invalid: {e}")
-        return InvalidTokenError()
-    
-@app.route('/v1/api/core/flow/edit', methods=['POST'])
-async def flowedit():
-    jwt_token = request.cookies.get("api_access_token")
-    usr = request.args.get('usr')
-
-    if not jwt_token or not usr:
-        await ip_blocker(conn_obj=request)
-        return jsonify(error="Missing required request data"), 400
-    
-    await cl_auth_db.connect_db()
-    await cl_data_db.connect_db()
-
-    try:
-        if await cl_auth_db.get_all_data(match=f'*uid:{usr}*', cnfrm=True) is False:
-            await ip_blocker(conn_obj=request)
-            return Unauthorized()
-        
-        usr_data = await cl_auth_db.get_all_data(match=f'*uid:{usr}*')
-        logger.info(usr_data)
-        usr_data_dict = next(iter(usr_data.values()))
-        logger.info(usr_data_dict)
-
-        api_data = await cl_data_db.get_all_data(match=f"api_dta:{usr_data_dict.get('db_id')}")
-
-        if api_data is None:
-            return jsonify(error="Resource not found"), 404
-            
-        api_data_dict = next(iter(api_data.values()))
-        logger.info(api_data_dict)
-
-        jwt_key = api_data_dict.get(f'{api_name}_jwt_secret')
-        logger.info(jwt_key)
-        decoded_token = jwt.decode(jwt=jwt_token, key=jwt_key , algorithms=["HS256"])
-        logger.info(decoded_token)
-
-        if decoded_token.get('rand') != api_data_dict.get(f'{api_name}_rand'):
-            await ip_blocker(conn_obj=request)
-            return Unauthorized()
-            
-        data = await request.get_json()
-
-        async with httpx.AsyncClient() as client:
-
-            headers = {'content-type': 'application/json'}
-                            
-            edit_resp = await client.post(f"{os.environ.get('OLLAMA_PROXY_URL')}/edit", json=data, headers=headers, timeout=int(os.environ.get('REQUEST_TIMEOUT')))
-
-            if edit_resp.status_code == 200:
-                edit_data = edit_resp.json()
-                return jsonify(edit_data)
-            else:
-                return jsonify({'status':'error'}), 400
-            
-    except ExpiredSignatureError:
-        logger.warning("JWT expired, need to refresh token")
-        return ExpiredSignatureError()
-    except InvalidTokenError as e:
-        logger.error(f"JWT invalid: {e}")
-        return InvalidTokenError()
-        
-@app.route('/v1/api/core/user/resetapi', methods=['POST'])
-async def resetapi():
-    jwt_token = request.cookies.get("access_token")
-    sess_id = request.args.get('sess_id')
-
-    if not jwt_token or not sess_id:
-        await ip_blocker(conn_obj=request)
-        return jsonify(error="Missing required request data"), 400
-    
-    await cl_sess_db.connect_db()
-    await cl_data_db.connect_db()
-
-    if await cl_sess_db.get_all_data(match=f'*{sess_id}*', cnfrm=True) is False:
-        await ip_blocker(conn_obj=request)
-        return Unauthorized()
-    
-    try:
-        usr_sess_data = await cl_sess_db.get_all_data(match=f'*{sess_id}*')
-        logger.info(usr_sess_data)
-        usr_data_dict = next(iter(usr_sess_data.values()))
-        logger.info(usr_data_dict)
-
-        jwt_key = usr_data_dict.get(f'usr_jwt_secret')
-        logger.info(jwt_key)
-        decoded_token = jwt.decode(jwt=jwt_token, key=jwt_key , algorithms=["HS256"])
-        logger.info(decoded_token)
-
-        if decoded_token.get('rand') != usr_data_dict.get(f'usr_rand'):
-            await ip_blocker(conn_obj=request)
-            return Unauthorized()
-        
-        if await cl_data_db.del_obj(key=f"api_dta:{usr_data_dict['db_id']}") is not None:
-
-            api_id = util_obj.key_gen(size=10) 
-
-            new_api_key = util_obj.generate_api_key()
-
-            updated_api_data = {api_name: bcrypt.hash(new_api_key),
-                            f"{api_name}_id": api_id,
-                            f"{api_name}_rand": secrets.token_urlsafe(500),
-                            f"{api_name}_jwt_secret": secrets.token_urlsafe(500)
-                        }
-        else:
-            return jsonify('API key reset failed'), 400
-        
-        if await cl_data_db.upload_db_data(id=f"api_dta:{usr_data_dict['db_id']}", data=updated_api_data) > 0:
-            link = cli.create_link(secret=new_api_key, ttl=int(os.environ.get('OTS_TTL')))
-
-            html_snippet = f"""<div style="font-family: Arial, sans-serif; color: #111; line-height: 1.5;">
-                        <p>Hello,</p>
-                        <p><strong>umjiniti</strong> API key for user <strong>{usr_data_dict.get('unm')}</strong> has been reset.</p>
-                        <p>You can retrieve the API key using the following one-time secret link. Note that this link will expire after a single use.</p>
-                        <p>API Key Retrieval Link: <a href="{link}">{link}</a></p>
-                        <p>Thank you,<br/>umjiniti Team</p>
-
-                        </div>"""
-            send_result = await run_sync(lambda: email_sender_handler.send_transactional_email(sender={'name': 'umjiniti Admin', 'email': os.environ.get('BREVO_SENDER_EMAIL')},
-                                                                                 to=[{"name": usr_data_dict.get('unm'), "email": usr_data_dict.get('eml')}],
-                                                                                 subject=f"umjiniti-core API Key Reset for {usr_data_dict.get('unm')}",
-                                                                                 html_content=html_snippet
-                                                                                 ))()
-
-            logger.info(f"API key reset email send result: {send_result}")
-            return jsonify('API key reset successful. Check your email for the new API key.')
-        else:
-            return jsonify('API key reset failed'), 400
-        
-    except ExpiredSignatureError:
-        logger.warning("JWT expired, need to refresh token")
-        await ip_blocker(conn_obj=request)
-        return ExpiredSignatureError()
-    except InvalidTokenError as e:
-        logger.error(f"JWT invalid: {e}")
-        await ip_blocker(conn_obj=request)
-        return InvalidTokenError()
-    except Exception:
-        return jsonify("Error, occurred"), 400
-    
-@app.route('/v1/api/core/user/createapi', methods=['POST'])
-async def createapi():
-    jwt_token = request.cookies.get("access_token")
-    sess_id = request.args.get('sess_id')
-
-    logger.info(f"Create API JWT: {jwt_token}, SESS: {sess_id}")
-
-    if not jwt_token or not sess_id:
-        await ip_blocker(conn_obj=request)
-        return jsonify(error="Missing required request data"), 400
-
-    await cl_sess_db.connect_db()
-    await cl_data_db.connect_db()
-
-    if await cl_sess_db.get_all_data(match=f'*{sess_id}*', cnfrm=True) is False:
-        await ip_blocker(conn_obj=request)
-        return Unauthorized()
-
-    try:
-        usr_sess_data = await cl_sess_db.get_all_data(match=f'*{sess_id}*')
-        logger.info(usr_sess_data)
-        usr_data_dict = next(iter(usr_sess_data.values()))
-        logger.info(usr_data_dict)
-
-        jwt_key = usr_data_dict.get(f'usr_jwt_secret')
-        logger.info(jwt_key)
-        decoded_token = jwt.decode(jwt=jwt_token, key=jwt_key , algorithms=["HS256"])
-        logger.info(decoded_token)
-
-        if decoded_token.get('rand') != usr_data_dict.get(f'usr_rand'):
-            await ip_blocker(conn_obj=request)
-            return Unauthorized()
-
-        api_id = util_obj.key_gen(size=10)
-        new_api_key = util_obj.generate_api_key()
-        
-        updated_api_data = {api_name: bcrypt.hash(new_api_key),
-                            f"{api_name}_id": api_id,
-                            f"{api_name}_rand": secrets.token_urlsafe(500),
-                            f"{api_name}_jwt_secret": secrets.token_urlsafe(500)
-                        }
-        
-        logger.info(usr_data_dict['db_id'])
-
-        if await cl_data_db.upload_db_data(id=f"api_dta:{usr_data_dict['db_id']}", data=updated_api_data) > 0:
-            link = cli.create_link(secret=new_api_key, ttl=int(os.environ.get('OTS_TTL')))
-
-            #check_contact = await run_sync(email_sender_handler.get_contact(user_id=usr_data_dict.get('db_id')))
-
-            contact_data = {"LASTNAME": usr_data_dict.get('lname'),
-                                "FIRSTNAME": usr_data_dict.get('fname'),
-                                }
-            new_contact_result = await run_sync(lambda: email_sender_handler.add_contact(email=usr_data_dict.get('eml'),
-                                                                ext_id=usr_data_dict.get('db_id'), attributes=contact_data
-                                                            ))()
-            logger.info(f"New contact creation result: {new_contact_result}")
-                
-            html_snippet = f"""<div style="font-family: Arial, sans-serif; color: #111; line-height: 1.5;">
-                        <p>Hello,</p>
-                        <p>A new <strong>umjiniti</strong> API key has been generated for user <strong>{usr_data_dict.get('unm')}</strong>.</p>
-                        <p>You can retrieve the API key using the following one-time secret link. Note that this link will expire after a single use.</p>
-                        <p>API Key Retrieval Link: <a href="{link}">{link}</a></p>
-                        <p>Thank you,<br/>umjiniti Team</p>
-
-                        </div>"""
-            send_result = await run_sync(lambda: email_sender_handler.send_transactional_email(sender={'name': 'umjiniti Admin', 'email': os.environ.get('BREVO_SENDER_EMAIL')},
-                                                                                 to=[{"name": usr_data_dict.get('unm'), "email": usr_data_dict.get('eml')}],
-                                                                                 subject=f"New umjiniti-core API Key Generated for {usr_data_dict.get('unm')}",
-                                                                                 html_content=html_snippet
-                                                                                 ))()
-            logger.info(type(send_result))
-            logger.info(f"API key creation email send result: {send_result}")
-            return jsonify('API key creation successful. Check your email for the new API key.'), 200       
-        else:
-            return jsonify('API key creation failed'), 400
-
-    except ExpiredSignatureError:
-        logger.warning("JWT expired, need to refresh token")
-        await ip_blocker(conn_obj=request)
-        return ExpiredSignatureError()
-    except InvalidTokenError as e:
-        logger.error(f"JWT invalid: {e}")
-        await ip_blocker(conn_obj=request)
-        return InvalidTokenError()
-    except Exception:
-        return jsonify("Error, occurred"), 400
-
-@app.route('/v1/api/core/user/alerts', methods=['POST'])
-async def alerts():
-    jwt_token = request.cookies.get("access_token")
-    sess_id = request.args.get('sess_id')   
-
-    if not jwt_token or not sess_id:
-        await ip_blocker(conn_obj=request)
-        return jsonify(error="Missing required request data"), 400
-    
-    await cl_sess_db.connect_db()
-
-    if await cl_sess_db.get_all_data(match=f'*{sess_id}*', cnfrm=True) is False:
-        await ip_blocker(conn_obj=request)
-        return Unauthorized()
-    
-    try:
-        usr_sess_data = await cl_sess_db.get_all_data(match=f'*{sess_id}*')
-        logger.info(usr_sess_data)
-        usr_data_dict = next(iter(usr_sess_data.values()))
-        logger.info(usr_data_dict)
-
-        jwt_key = usr_data_dict.get(f'usr_jwt_secret')
-        logger.info(jwt_key)
-        decoded_token = jwt.decode(jwt=jwt_token, key=jwt_key , algorithms=["HS256"])
-        logger.info(decoded_token)
-
-        if decoded_token.get('rand') != usr_data_dict.get(f'usr_rand'):
-            await ip_blocker(conn_obj=request)
-            return Unauthorized()
-        
-        data = await request.get_json()
-        logger.info(data)
-
-        match data['action']:
-            case 'ack':
-                if await cl_data_db.upload_db_data(id=data['id'], data={'ack': 'seen'}) > 0:
-                    return jsonify({'status':'alert acknowledged'}), 200
-                else:
-                    return jsonify({'status':'alert acknowledgment failed'}), 400
-            case 'rslv':
-                if await cl_data_db.upload_db_data(id=data['id'], data={'rslv': 'resolved'}) > 0:
-                    return jsonify({'status':'alert resolved'}), 200
-                else:
-                    return jsonify({'status':'alert resolution failed'}), 400
-
-    except ExpiredSignatureError:
-        logger.warning("JWT expired, need to refresh token")
-        await ip_blocker(conn_obj=request)
-        return ExpiredSignatureError()
-    except InvalidTokenError as e:
-        logger.error(f"JWT invalid: {e}")
-        await ip_blocker(conn_obj=request)
-        return InvalidTokenError()
-    except Exception():
-        return jsonify("Error, occurred"), 400
-       
 @app.route('/v1/api/core/probes/<string:prb_id>/exec', methods=['POST'])
 async def exec(prb_id):
     logger.info(request.args)
@@ -1510,6 +1046,277 @@ async def exec(prb_id):
         abort(401)
     except Exception as e:
         return jsonify({f'error occurred: {e}'})
+    
+@app.route('/v1/api/core/probes/delete', methods=['POST'])
+async def delete():
+    jwt_token = request.cookies.get("api_access_token")
+    usr = request.args.get('usr')
+
+    if not jwt_token or not usr:
+        await ip_blocker(conn_obj=request)
+        abort(401)
+
+    await api_jwt_verification(usr=usr, jwt_token=jwt_token, request=request)
+
+    data = await request.get_json()
+    logger.info(data)
+    id = data['id']
+    logger.info(id)
+
+    result = await cl_data_db.del_obj(key=id)
+    logger.info(result)
+
+    if result is None:
+        return jsonify('Probe deletion failed'), 400
+
+    return jsonify('Probe deleted'), 200
+        
+@app.route('/v1/api/core/flow/delete', methods=['POST'])
+async def flowdelete():
+    jwt_token = request.cookies.get("api_access_token")
+    usr = request.args.get('usr')
+
+    if not jwt_token or not usr:
+        await ip_blocker(conn_obj=request)
+        abort(401)
+
+    await api_jwt_verification(usr=usr, jwt_token=jwt_token, request=request)
+
+    data = await request.get_json()
+    logger.info(data)
+    id = data.get('id')
+
+    result = await cl_data_db.del_obj(key=id)
+
+    if result is not None:
+        return jsonify(result), 200
+    else:
+        return jsonify('Flow deletion failed'), 400
+        
+@app.route('/v1/api/core/flow/save', methods=['POST'])
+async def flowsave():
+    jwt_token = request.cookies.get("api_access_token")
+    usr = request.args.get('usr')
+
+    if not jwt_token or not usr:
+        await ip_blocker(conn_obj=request)
+        abort(401)
+
+    await api_jwt_verification(usr=usr, jwt_token=jwt_token, request=request)
+
+    data = await request.get_json()
+    logger.info(data)
+    flow = json.loads(data.get('flow'))
+    selected_probe = data.get('probe')
+    name = data.get('name')
+    flow_id = f'flow:{selected_probe}:{str(uuid.uuid4())}'
+
+    flow_data = {
+        'id': flow_id,
+        'probe': selected_probe,
+        'flow': flow,
+        'name': name
+    }
+    logger.info(flow_data)
+
+    save_flow = await cl_data_db.upload_db_data(id=flow_id, data=flow_data)
+
+    if save_flow is not None:
+        return jsonify({'status':'saved', 'flow':f'{flow_id}.json'}), 200
+    else:
+        return jsonify({'status':'failed'}), 400
+        
+@app.route('/v1/api/core/flow/load', methods=['POST'])
+async def flowload():
+    jwt_token = request.cookies.get("api_access_token")
+    usr = request.args.get('usr')
+
+    if not jwt_token or not usr:
+        await ip_blocker(conn_obj=request)
+        abort(401)
+
+    await api_jwt_verification(usr=usr, jwt_token=jwt_token, request=request)
+
+    data = await request.get_json()
+    logger.info(data)
+    id = data.get('id')
+
+    requested_flow = await cl_data_db.get_all_data(f'*{id}*')
+
+    if requested_flow is not None:
+        logger.info(requested_flow)
+        flow_key=next(iter(requested_flow))
+        requested_flow_data=requested_flow[flow_key]
+        flow_data_str = requested_flow_data['flow']
+        flow_dict = ast.literal_eval(flow_data_str)
+
+        logger.info(flow_dict)
+        returned_data = {
+            'name': requested_flow_data['name'],
+            'flow': flow_dict
+        }
+        return jsonify(returned_data), 200
+    else:
+        return jsonify({'status':'error'}), 400
+    
+@app.route('/v1/api/core/flow/edit', methods=['POST'])
+async def flowedit():
+    jwt_token = request.cookies.get("api_access_token")
+    usr = request.args.get('usr')
+
+    if not jwt_token or not usr:
+        await ip_blocker(conn_obj=request)
+        abort(401)
+
+    await api_jwt_verification(usr=usr, jwt_token=jwt_token, request=request)
+
+    data = await request.get_json()
+    logger.info(data)
+    id = data.get('id')
+    probe = data.get('probe')
+    flow_data = data.get('flow')
+    name = data.get('name')
+
+    await cl_data_db.connect_db()
+
+    if await cl_data_db.del_obj(key=id) is not None:
+        flow_data_payload = {
+            'id': id,
+            'probe': probe,
+            'flow': flow_data,
+            'name': name
+        }
+        logger.info(flow_data_payload)
+
+        if await cl_data_db.upload_db_data(id=id, data=flow_data_payload) > 0:
+            return jsonify({'status':'edited', 'flow':f'{id}.json'}), 200
+        else:
+            return jsonify({'status':'failed'}), 400
+        
+@app.route('/v1/api/core/user/resetapi', methods=['POST'])
+async def resetapi():
+    jwt_token = request.cookies.get("access_token")
+    sess_id = request.args.get('sess_id')
+
+    if not jwt_token or not sess_id:
+        await ip_blocker(conn_obj=request)
+        abort(401)
+
+    usr_data_dict =await usr_jwt_verification(sess_id=sess_id, jwt_token=jwt_token, request=request)
+
+    if await cl_data_db.del_obj(key=f"api_dta:{usr_data_dict['db_id']}") is not None:
+
+        api_id = util_obj.key_gen(size=10) 
+
+        new_api_key = util_obj.generate_api_key()
+
+        updated_api_data = {api_name: bcrypt.hash(new_api_key),
+                            f"{api_name}_id": api_id,
+                            f"{api_name}_rand": secrets.token_urlsafe(500),
+                            f"{api_name}_jwt_secret": secrets.token_urlsafe(500)
+                        }
+   
+        if await cl_data_db.upload_db_data(id=f"api_dta:{usr_data_dict['db_id']}", data=updated_api_data) > 0:
+            link = cli.create_link(secret=new_api_key, ttl=int(os.environ.get('OTS_TTL')))
+
+            html_snippet = f"""<div style="font-family: Arial, sans-serif; color: #111; line-height: 1.5;">
+                        <p>Hello,</p>
+                        <p><strong>umjiniti</strong> API key for user <strong>{usr_data_dict.get('unm')}</strong> has been reset.</p>
+                        <p>You can retrieve the API key using the following one-time secret link. Note that this link will expire after a single use.</p>
+                        <p>API Key Retrieval Link: <a href="{link}">{link}</a></p>
+                        <p>Thank you,<br/>umjiniti Team</p>
+
+                        </div>"""
+            send_result = await run_sync(lambda: email_sender_handler.send_transactional_email(sender={'name': 'umjiniti Admin', 'email': os.environ.get('BREVO_SENDER_EMAIL')},
+                                                                                 to=[{"name": usr_data_dict.get('unm'), "email": usr_data_dict.get('eml')}],
+                                                                                 subject=f"umjiniti-core API Key Reset for {usr_data_dict.get('unm')}",
+                                                                                 html_content=html_snippet
+                                                                                 ))()
+
+            logger.info(f"API key reset email send result: {send_result}")
+            return jsonify('API key reset successful. Check your email for the new API key.')
+        else:
+            return jsonify('API key reset failed'), 400
+    
+@app.route('/v1/api/core/user/createapi', methods=['POST'])
+async def createapi():
+    jwt_token = request.cookies.get("access_token")
+    sess_id = request.args.get('sess_id')
+
+    logger.info(f"Create API JWT: {jwt_token}, SESS: {sess_id}")
+
+    if not jwt_token or not sess_id:
+        await ip_blocker(conn_obj=request)
+        abort(401)
+
+    usr_data_dict = await usr_jwt_verification(sess_id=sess_id, jwt_token=jwt_token, request=request)
+
+    api_id = util_obj.key_gen(size=10)
+    new_api_key = util_obj.generate_api_key()
+        
+    updated_api_data = {api_name: bcrypt.hash(new_api_key),
+                            f"{api_name}_id": api_id,
+                            f"{api_name}_rand": secrets.token_urlsafe(500),
+                            f"{api_name}_jwt_secret": secrets.token_urlsafe(500)
+                        }
+        
+    logger.info(usr_data_dict['db_id'])
+
+    if await cl_data_db.upload_db_data(id=f"api_dta:{usr_data_dict['db_id']}", data=updated_api_data) > 0:
+        link = cli.create_link(secret=new_api_key, ttl=int(os.environ.get('OTS_TTL')))
+
+        contact_data = {"LASTNAME": usr_data_dict.get('lname'),
+                                "FIRSTNAME": usr_data_dict.get('fname'),
+                                }
+        new_contact_result = await run_sync(lambda: email_sender_handler.add_contact(email=usr_data_dict.get('eml'),
+                                                                ext_id=usr_data_dict.get('db_id'), attributes=contact_data
+                                                            ))()
+        logger.info(f"New contact creation result: {new_contact_result}")
+                
+        html_snippet = f"""<div style="font-family: Arial, sans-serif; color: #111; line-height: 1.5;">
+                        <p>Hello,</p>
+                        <p>A new <strong>umjiniti</strong> API key has been generated for user <strong>{usr_data_dict.get('unm')}</strong>.</p>
+                        <p>You can retrieve the API key using the following one-time secret link. Note that this link will expire after a single use.</p>
+                        <p>API Key Retrieval Link: <a href="{link}">{link}</a></p>
+                        <p>Thank you,<br/>umjiniti Team</p>
+
+                        </div>"""
+        send_result = await run_sync(lambda: email_sender_handler.send_transactional_email(sender={'name': 'umjiniti Admin', 'email': os.environ.get('BREVO_SENDER_EMAIL')},
+                                                                                 to=[{"name": usr_data_dict.get('unm'), "email": usr_data_dict.get('eml')}],
+                                                                                 subject=f"New umjiniti-core API Key Generated for {usr_data_dict.get('unm')}",
+                                                                                 html_content=html_snippet
+                                                                                 ))()
+        logger.info(type(send_result))
+        logger.info(f"API key creation email send result: {send_result}")
+        return jsonify('API key creation successful. Check your email for the new API key.'), 200       
+    else:
+        return jsonify('API key creation failed'), 400
+
+@app.route('/v1/api/core/user/alerts', methods=['POST'])
+async def alerts():
+    jwt_token = request.cookies.get("access_token")
+    sess_id = request.args.get('sess_id')   
+
+    if not jwt_token or not sess_id:
+        await ip_blocker(conn_obj=request)
+        return jsonify(error="Missing required request data"), 400
+    
+    await usr_jwt_verification(sess_id=sess_id, jwt_token=jwt_token, request=request)
+
+    data = await request.get_json()
+    logger.info(data)
+
+    match data['action']:
+        case 'ack':
+            if await cl_data_db.upload_db_data(id=data['id'], data={'ack': 'seen'}) > 0:
+                return jsonify({'status':'alert acknowledged'}), 200
+            else:
+                return jsonify({'status':'alert acknowledgment failed'}), 400
+        case 'rslv':
+            if await cl_data_db.upload_db_data(id=data['id'], data={'rslv': 'resolved'}) > 0:
+                return jsonify({'status':'alert resolved'}), 200
+            else:
+                return jsonify({'status':'alert resolution failed'}), 400
  
 @app.errorhandler(Unauthorized)
 async def unauthorized():
