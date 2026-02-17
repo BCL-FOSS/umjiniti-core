@@ -404,10 +404,10 @@ async def settings(cmp_id, obsc):
   
     return await render_template("app/settings.html", obsc_key=session.get('url_key'), cmp_id=cmp_id, data=user_data, cur_usr=user_data.get('unm'), mntr_url=mntr_url, ws_url=ws_url, cur_usr_id=cur_usr_id)
 
-@app.route('/floweditor', defaults={'cmp_id': 'bcl','obsc': url_key, 'flow_id': 'default'}, methods=['GET', 'POST'])
-@app.route("/floweditor/<string:cmp_id>/<string:obsc>/<string:flow_id>", methods=['GET', 'POST'])
+@app.route('/floweditor', defaults={'cmp_id': 'bcl','obsc': url_key, 'flow_id': 'default', 'prb_id': 'default'}, methods=['GET', 'POST'])
+@app.route("/floweditor/<string:cmp_id>/<string:obsc>/<string:flow_id>/<string:prb_id>", methods=['GET', 'POST'])
 @user_login_required
-async def floweditor(cmp_id, obsc, flow_id):
+async def floweditor(cmp_id, obsc, flow_id, prb_id):
     cur_usr_id = current_client.auth_id
     user_data, ws_url = await retrieve_user_sess_data(sess_id=cur_usr_id)
 
@@ -417,23 +417,7 @@ async def floweditor(cmp_id, obsc, flow_id):
 
     return await render_template("app/floweditor.html", obsc_key=session.get('url_key') ,
                                 cmp_id=cmp_id, all_probes=probe_data, mntr_url=mntr_url, 
-                                user=user_data.get('unm'), cur_usr=user_data.get('unm'), ws_url=ws_url, cur_usr_id_id=cur_usr_id, data=user_data, flow_id=flow_id, cur_usr_id=cur_usr_id)
-
-@app.route('/probes', defaults={'cmp_id': 'bcl','obsc': url_key}, methods=['GET', 'POST'])
-@app.route("/probes/<string:cmp_id>/<string:obsc>", methods=['GET', 'POST'])
-@user_login_required
-async def probes(cmp_id, obsc):
-    cur_usr_id = current_client.auth_id
-    user_data, ws_url = await retrieve_user_sess_data(sess_id=cur_usr_id)
-
-    all_probes = await cl_data_db.get_all_data(match=f"prb:*")
-    logger.info(all_probes)
-
-    if all_probes is None:
-        all_probes = {'':''}
-
-    return await render_template("app/probes.html", obsc_key=session.get('url_key'),
-                                all_probes=all_probes, cmp_id=cmp_id, mntr_url=mntr_url, cur_usr=user_data.get('unm'), cur_usr_id_id=cur_usr_id, ws_url=ws_url, data=user_data)
+                                user=user_data.get('unm'), cur_usr=user_data.get('unm'), ws_url=ws_url, cur_usr_id_id=cur_usr_id, data=user_data, flow_id=flow_id, prb_id=prb_id, cur_usr_id=cur_usr_id)
 
 @app.route('/probe', defaults={'cmp_id': 'bcl','obsc': url_key, 'prb_id': 'default'}, methods=['GET', 'POST'])
 @app.route("/probe/<string:cmp_id>/<string:obsc>/<string:prb_id>", methods=['GET', 'POST'])
@@ -474,15 +458,15 @@ async def alerts(cmp_id, obsc):
     return await render_template("app/alerts.html", obsc_key=session.get('url_key') ,
                                   cmp_id=cmp_id, ws_url=ws_url, cur_usr=user_data.get('unm'), data=user_data, cur_usr_id=cur_usr_id)
 
-@app.route('/chats', defaults={'cmp_id': 'bcl','obsc': url_key, 'usr': 'default'}, methods=['GET', 'POST'])
-@app.route("/chats/<string:cmp_id>/<string:obsc>/<string:usr>", methods=['GET', 'POST'])
+@app.route('/chats', defaults={'cmp_id': 'bcl','obsc': url_key, 'usr': 'default', 'prb_id': 'default'}, methods=['GET', 'POST'])
+@app.route("/chats/<string:cmp_id>/<string:obsc>/<string:usr>/<string:prb_id>", methods=['GET', 'POST'])
 @user_login_required
-async def chats(cmp_id, obsc, usr):
+async def chats(cmp_id, obsc, usr, prb_id):
     cur_usr_id = current_client.auth_id
     user_data, ws_url = await retrieve_user_sess_data(sess_id=cur_usr_id)
 
     if usr != "default":
-        chats = await cl_data_db.get_all_data(match=f"chat:{usr}:*")
+        chats = await cl_data_db.get_all_data(match=f"chat:{prb_id}:{usr}:*")
     else:
         chats = {'':''}
 

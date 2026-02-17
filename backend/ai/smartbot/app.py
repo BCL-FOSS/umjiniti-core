@@ -65,55 +65,6 @@ def normalize_arguments(args):
     else:
         logger.warning(f"Unexpected arguments format: {args}")
         return {}
-    
-async def flow_call_mcp(server_url: str, tool_call: dict, mcp_headers: dict):
-    """
-    Call the FastMCP server tool with sanitized arguments.
-    """
-    tool_name = tool_call.get("name")
-    args = normalize_arguments(tool_call.get("arguments", {}))
-    logger.info(f"Calling MCP tool `{tool_name}` with arguments: {args}")
-
-    async with httpx.AsyncClient() as client:
-        # Initialize MCP session
-        resp = await client.post(server_url, json=init_payload, headers=mcp_headers, timeout=int(os.environ.get('REQUEST_TIMEOUT')))
-        
-        session_id = resp.headers.get('mcp-session-id')
-        mcp_headers['Mcp-Session-Id'] = session_id
-        logger.info(f"Using MCP session: {session_id}")
-
-        # Complete initialization
-        init_complete_resp = await client.post(server_url, json=init_complete_payload, headers=mcp_headers, timeout=int(os.environ.get('REQUEST_TIMEOUT')))
-        
-
-        # Perform tool call
-        tool_call_payload = {
-            "jsonrpc": "2.0",
-            "method": "tools/call",
-            "params": {
-                "name": tool_name,
-                "arguments": args
-            },
-            "id": 2
-        }
-
-        tool_call_resp = await client.post(server_url, json=tool_call_payload, headers=mcp_headers, timeout=int(os.environ.get('REQUEST_TIMEOUT')))
-
-        # Extract SSE "data:" line
-        lines = tool_call_resp.text.split('\n')
-        data_line = next((line for line in lines if line.startswith('data: ')), None)
-        if data_line:
-            result = json.loads(data_line[6:])
-            answer = result['result']['content'][0]
-            #answer_data = json.loads(answer['text'])
-            text = answer.get("text")
-            answer_data = json.loads(text)
-            #answer_data_parsed = ast.literal_eval(answer_data)
-            logger.info(answer_data)
-            #await resp.aclose()
-            #await init_complete_resp.aclose()
-            #await tool_call_resp.aclose()
-            return answer_data
 
 async def call_mcp(server_url: str, tool_call: dict):
     """
@@ -156,9 +107,6 @@ async def call_mcp(server_url: str, tool_call: dict):
             #answer_data = json.loads(answer['text'])
             text = answer.get("text")
             answer_data = json.loads(text)
-            #await resp.aclose()
-            #await init_complete_resp.aclose()
-            #await tool_call_resp.aclose()
             return answer_data
 
 async def fetch_mcp_tools(server_url: str) -> list:
@@ -188,9 +136,6 @@ async def fetch_mcp_tools(server_url: str) -> list:
             result = json.loads(data_line[6:])
             tool_data = result['result']
             logger.info(f"Available tools: {tool_data['tools']}")
-            #await resp.aclose()
-            #await init_complete_resp.aclose()
-            #await tool_list_resp.aclose()
             return tool_data['tools']
 
 @app.route("/v1/multitools", methods=["POST"])
@@ -206,43 +151,47 @@ async def multitools():
     api_key = data.get("api_key")
     headers['x-api-key'] = api_key
     logger.info(headers)
-
-    # --- Step A: Collect tool schemas from MCP servers ---
-    tool_schemas = []
-    for t in tools:
-        if t.get("type") == "mcp":
-            mcp_tools = await fetch_mcp_tools(server_url=t["server_url"])
-            if mcp_tools is None:
-                return {'Error': f"Failed to fetch tools from {t['server_url']}"}
-            for tool in mcp_tools:
-                tool_schemas.append({
-                    "server_label": t["server_label"],
-                    "server_url": t["server_url"],
-                    "schema": tool
-                })
-
-    logger.info(tool_schemas)
-    # --- Step B: Build tool instructions for the LLM ---
     tool_instructions = ""
-    if tool_schemas:
-        tool_instructions += (
-            "You have access to the following tools. "
-            "When using them, respond ONLY with a JSON object in this format:\n"
-            '{"name": "<tool_name>", "arguments": {"param1": "value1", "param2": "value2"}}\n\n'
-            "Arguments must always be concrete values, not schemas or descriptions.\n\n"
-            "✅ Valid example:\n"
-            '{"name": "controller_system_data", "arguments": {"user": "hollow", "ip": "ubnt.baughcl.tech"}}\n\n'
-            "❌ Invalid example:\n"
-            '{"name": "controller_system_data", "arguments": [{"properties": {"user": {...}, "ip": {...}}}]}\n\n'
-            "If you want to call multiple tools in a single response, return a JSON array of objects, e.g.:\n"
-            "✅ Valid example:\n"
-            '[{"name": "tool_a", "arguments": {...}}, {"name": "tool_b", "arguments": {...}}]\n\n'   
-            "Available tools:\n"
-        )
-        for ts in tool_schemas:
-            sch = ts["schema"]
-            tool_instructions += f"- {sch['name']}: {sch['description']}\n"
-            tool_instructions += f"  Parameters: {json.dumps(sch['inputSchema'])}\n"
+
+    if 'tool_instructions' in data and data['tool_instructions']:
+        tool_instructions = data['tool_instructions']
+
+    else:
+        # --- Step A: Collect tool schemas from MCP servers ---
+        tool_schemas = []
+        for t in tools:
+            if t.get("type") == "mcp":
+                mcp_tools = await fetch_mcp_tools(server_url=t["server_url"])
+                if mcp_tools is None:
+                    return {'Error': f"Failed to fetch tools from {t['server_url']}"}
+                for tool in mcp_tools:
+                    tool_schemas.append({
+                        "server_label": t["server_label"],
+                        "server_url": t["server_url"],
+                        "schema": tool
+                    })
+
+        logger.info(tool_schemas)
+        # --- Step B: Build tool instructions for the LLM ---
+        if tool_schemas:
+            tool_instructions += (
+                "You have access to the following tools. "
+                "When using them, respond ONLY with a JSON object in this format:\n"
+                '{"name": "<tool_name>", "arguments": {"param1": "value1", "param2": "value2"}}\n\n'
+                "Arguments must always be concrete values, not schemas or descriptions.\n\n"
+                "✅ Valid example:\n"
+                '{"name": "controller_system_data", "arguments": {"user": "hollow", "ip": "ubnt.baughcl.tech"}}\n\n'
+                "❌ Invalid example:\n"
+                '{"name": "controller_system_data", "arguments": [{"properties": {"user": {...}, "ip": {...}}}]}\n\n'
+                "If you want to call multiple tools in a single response, return a JSON array of objects, e.g.:\n"
+                "✅ Valid example:\n"
+                '[{"name": "tool_a", "arguments": {...}}, {"name": "tool_b", "arguments": {...}}]\n\n'   
+                "Available tools:\n"
+            )
+            for ts in tool_schemas:
+                sch = ts["schema"]
+                tool_instructions += f"- {sch['name']}: {sch['description']}\n"
+                tool_instructions += f"  Parameters: {json.dumps(sch['inputSchema'])}\n"
 
     # --- Step C: Send conversation to Ollama ---
     conversation = [
@@ -265,7 +214,20 @@ async def multitools():
     # --- Step D: Parse model output ---
     ollama_out_clean = clean_ollama_output(ollama_out)
 
-    if 'model trained and developed by Baugh Consulting & Lab L.L.C.'.lower() in ollama_out_clean.lower():
+    if f"I am a locally hosted, open source {model} model running on ollama.".lower() in ollama_out_clean.lower():
+        logger.info(tools[0].get('server_url'))
+
+        response_payload={
+            "id": f"resp:{user}:{tools[0].get('server_url')}:{datetime.now(timezone.utc)}:{uuid.uuid4()}",
+            "user_msg": user_input,
+            "output_text": ollama_out_clean
+        }
+
+        logger.info(response_payload)
+
+        return jsonify(response_payload)
+    
+    if f"SmartBot-Analysis: ".lower() in ollama_out_clean.lower():
         logger.info(tools[0].get('server_url'))
 
         response_payload={
@@ -406,60 +368,12 @@ async def multitools():
     response_payload['user_msg'] = user_input
     response_payload['output_text'] = final_output
     response_payload['tool_outputs'] = tool_outputs
+    response_payload['tool_calls'] = tool_calls
+    response_payload['tool_instructions'] = tool_instructions
+    response_payload['ollama_out_clean'] = ollama_out_clean
 
     logger.info(response_payload)
 
-    return jsonify(response_payload)
-
-@app.route("/v1/analysis", methods=["POST"])
-async def analysis():
-    data = await request.get_json()
-    logger.info(f"Incoming request: {data}")
-
-    model = data.get("model")
-    instructions = data.get("instructions")
-    user_input = data.get("usr_input")
-    user = data.get("user")
-    probe_url = data.get('url')
-    #api_key = data.get("api_key")
-    #passed_headers = headers.copy()
-    #passed_headers['x-api-key'] = api_key
-    #logger.info(passed_headers)
-
-    # --- Step A: Send conversation to Ollama ---
-    conversation = [
-        {"role": "system", "content": instructions},
-        {"role": "user", "content": user_input},
-    ]
-
-    async with httpx.AsyncClient() as client:
-        resp = await client.post(
-            OLLAMA_URL,
-            json={"model": model, "messages": conversation, "stream": False},
-            timeout=int(os.environ.get('REQUEST_TIMEOUT')),
-        )
-      
-        ollama_json = resp.json()
-        ollama_out = ollama_json.get("message", {}).get("content", "")
-        logger.info(f"Ollama output (raw): {ollama_out}")
-
-    # --- Step B: Parse model output ---
-    ollama_out_clean = clean_ollama_output(ollama_out)
-
-    logger.info(ollama_out_clean)
-
-    final_output = ""
-    #final_output+=f'{user_input}\n\n'
-
-    final_output=ollama_out_clean
-
-    response_payload={
-        "id": f"resp:{user}:{probe_url}:{datetime.now(timezone.utc)}:{uuid.uuid4()}",
-        "user_msg": user_input,
-        "output_text": final_output
-    }
-
-    # --- Step C: Return OpenAI-style response ---
     return jsonify(response_payload)
 
 @app.route('/v1/exec', methods=['POST'])

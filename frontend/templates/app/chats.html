@@ -1,5 +1,7 @@
 {% extends 'app/base.html' %}
 
+{% set hide_sidebar = true %}
+
 {% block content %}
 <style>
   .modal {
@@ -27,20 +29,21 @@
                 <div class="card-body px-1 pb-0">
                   <a >
                     <h5 class="font-weight-bolder">
-                      {{ message.name }}
+                      {{ message.type }}
                     </h5>
                   </a>
                   <p class="mb-4 text-sm">
-                    {{ message.type }}
+                    {{ message.timestamp }}
                   </p>
-                  <p class="text-secondary mb-0 text-sm">Is Primary: {{ message.is_primary }}</p>
                   <div class="d-flex align-items-center justify-content-between">
                     <div class="input-group mb-3">
-                      <button class="btn btn-outline-primary btn-sm mb-0" id="fav-contact">
-                        Make Primary {{ message.type.capitalize() }} Contact
+                      <button class="btn btn-outline-primary btn-sm mb-0 chat-details-btn" 
+                      data-usr="{{ message.usr_msg }}" 
+                      data-agent="{{ message.agent_msg }}">
+                        View Details
                       </button>
-                      <button type="button" class="btn btn-outline-danger btn-sm mb-0" id="del-contact">
-                        Delete Contact
+                      <button type="button" class="btn btn-outline-danger btn-sm mb-0 chat-convert-btn">
+                        Convert to Task
                       </button>
                     </div>
                   </div>
@@ -55,16 +58,29 @@
   </div>
 </div>
 
-<div class="modal fade" id="alertViewModal" tabindex="-1" aria-labelledby="alertViewModalLabel" aria-hidden="true">
+<div class="modal fade" id="chatDetailsModal" tabindex="-1" aria-labelledby="chatDetailsModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-lg modal-dialog-centered">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="alertViewModalLabel">Alert Details</h5>
+        <h5 class="modal-title" id="chatDetailsModalLabel">Chat Details</h5>
        
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
-        <p id="alert-msg"></p>
+        <div class="terminal-container mb-4">
+            <div class="window-bar">
+                <div class="window-buttons">
+                    <div class="window-button close"></div>
+                    <div class="window-button minimize"></div>
+                    <div class="window-button maximize"></div>
+                </div>
+            </div>
+            <div class="terminal" id="terminal-output">
+              <p class="form-text">User Inquiry: <br> <code id="chat-usr-msg"></code><br></p>
+              <p class="form-text">SmartBot Response: <br> <code id="chat-agent-msg"></code><br></p>
+            </div>
+          </div>
+        </div>    
       
       </div>
       <div class="modal-footer">
@@ -74,41 +90,21 @@
   </div>
 </div>
 
-<div class="modal fade" id="alertAckModal" tabindex="-1" aria-labelledby="alertAckModalLabel" aria-hidden="true">
+<div class="modal fade" id="chatConvertModal" tabindex="-1" aria-labelledby="chatConvertModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-lg modal-dialog-centered">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="alertAckModalLabel">Alert Acknowledge</h5>
+        <h5 class="modal-title" id="chatConvertModalLabel">Convert to Task</h5>
        
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
-        <p id="alert-ack-msg"></p>
+        <p id="chat-convert-msg"></p>
       
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-        <button type="button" class="btn btn-danger" data-bs-dismiss="modal" id="alert-ack-init">Acknowledge</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<div class="modal fade" id="alertRslvModal" tabindex="-1" aria-labelledby="alertRslvModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-lg modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="alertRslvModalLabel">Alert Resolve</h5>
-       
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <p id="alert-rslv-msg"></p>
-      
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-        <button type="button" class="btn btn-danger" data-bs-dismiss="modal" id="alert-rslv-init">Resolve</button>
+        <button type="button" class="btn btn-danger" data-bs-dismiss="modal" id="chat-convert-init">Convert</button>
       </div>
     </div>
   </div>
@@ -116,127 +112,32 @@
 
 
 <script type="text/javascript">
-document.addEventListener("DOMContentLoaded", () => {
-  const table = document.querySelector("#probeTable");
-  const rows = table.querySelectorAll("tbody tr");
-  const mntrURL = "{{ mntr_url }}";
+  const chatConversionButtons = document.querySelectorAll(".chat-convert-btn");
+  const chatDetailsButtons = document.querySelectorAll(".chat-details-btn");
+  const chatDetailsModal = new bootstrap.Modal(document.getElementById('chatDetailsModal'));
+  const chatConvertModal = new bootstrap.Modal(document.getElementById('chatConvertModal'));
 
-  // Handle row selection
-  rows.forEach(row => {
-    row.addEventListener("click", () => {
-      rows.forEach(r => {
-        r.classList.remove("selected");
-        r.style.backgroundColor = "";
-      });
-      row.classList.add("selected");
-      row.style.backgroundColor = "lightcoral";
-    });
-  });
-
-  // Alert action buttons
-  const alertViewButtons = document.querySelectorAll(".alert-details-btn");
-  const alertAckButtons = document.querySelectorAll(".alert-acknowledge-btn");
-  const alertRslvButtons = document.querySelectorAll(".alert-resolve-btn");
-
-  // Alert modal action buttons
-  const alertAckInitButton = document.getElementById("alert-ack-init");
-  const alertRslvInitButton = document.getElementById("alert-rslv-init");
-
-  // Alert Modals
-  const alertViewModalEl = document.getElementById('alertViewModal');
-  let alertViewModal = null;
-  if (alertViewModalEl) {
-    alertViewModal = new bootstrap.Modal(alertViewModalEl, {});
-  }
-
-  const alertAckModalEl = document.getElementById('alertAckModal');
-  let alertAckModal = null;
-  if (alertAckModalEl) {    
-    alertAckModal = new bootstrap.Modal(alertAckModalEl, {});
-  }
-
-  const alertRslvModalEl = document.getElementById('alertRslvModal');
-  let alertRslvModal = null;
-  if (alertRslvModalEl) {    
-    alertRslvModal = new bootstrap.Modal(alertRslvModalEl, {});
-  }
-
-  // View Details button handler
-  alertViewButtons.forEach(btn => {
+  chatDetailsButtons.forEach(btn => {
     btn.addEventListener("click", (e) => {
       e.stopPropagation(); // prevent row click selection (if undesired)
-      const name = btn.dataset.name || '';
-      const msg = btn.dataset.msg || '';
-      const site = btn.dataset.site || '';
-      const prb_id = btn.dataset.prb_id || '';
-      const timestamp = btn.dataset.timestamp || '';
-      const alert_type = btn.dataset.alert_type || '';
-      const id = btn.dataset.id || '';
+      const msg = btn.dataset.usr || '';
+      const response = btn.dataset.agent || '';
       // Fill modal fields
-      document.getElementById('alertViewModalLabel').textContent = `Alert Details - ${name} ${alert_type}`;
-      document.getElementById('alert-msg').textContent = msg;
-      if (alertViewModal) {
-        alertViewModal.show();
-      } else {
-        console.warn("Bootstrap Modal not available - cannot show alert view modal.");
-      }
+      document.getElementById('chat-usr-msg').textContent = `User Inquiry: \n${msg}`;
+      document.getElementById('chat-agent-msg').textContent = `SmartBot Response: \n${response}`;
+
+      chatDetailsModal.show();
     });
   });
 
-  // Acknowledge button handler
-  alertAckButtons.forEach(btn => {
+  chatConversionButtons.forEach(btn => {
     btn.addEventListener("click", (e) => {
       e.stopPropagation(); // prevent row click selection (if undesired)
-      const name = btn.dataset.name || '';
       const msg = btn.dataset.msg || '';
-      const site = btn.dataset.site || '';
-      const prb_id = btn.dataset.prb_id || '';
-      const timestamp = btn.dataset.timestamp || '';
-      const alert_type = btn.dataset.alert_type || '';
-      const id = btn.dataset.id || '';
       // Fill modal fields
-      document.getElementById('alertAckModalLabel').textContent = `Acknowledge Alert - ${name} ${alert_type}`;
-      document.getElementById('alert-ack-msg').textContent = `Are you sure you want to acknowledge the alert: ${msg}`;
-      if (alertAckModal) {
-        alertAckModal.show();
-      } else {
-        console.warn("Bootstrap Modal not available - cannot show alert acknowledge modal.");
-      }
+      document.getElementById('chat-convert-msg').textContent = `Are you sure you want to convert the chat to a task: ${msg}`;
+      chatConvertModal.show();
     });
   });
-
-  // Resolve button handler
-  alertRslvButtons.forEach(btn => {
-    btn.addEventListener("click", (e) => {
-      e.stopPropagation(); // prevent row click selection (if undesired)
-      const name = btn.dataset.name || '';
-      const msg = btn.dataset.msg || '';
-      const site = btn.dataset.site || '';
-      const prb_id = btn.dataset.prb_id || '';
-      const timestamp = btn.dataset.timestamp || '';
-      const alert_type = btn.dataset.alert_type || '';
-      const id = btn.dataset.id || '';
-      // Fill modal fields
-      document.getElementById('alertRslvModalLabel').textContent = `Resolve Alert - ${name} ${alert_type}`;
-      document.getElementById('alert-rslv-msg').textContent = `Are you sure you want to resolve the alert: ${msg}`;
-      if (alertRslvModal) {
-        alertRslvModal.show();
-      } else {
-        console.warn("Bootstrap Modal not available - cannot show alert resolve modal.");
-      }
-    });
-  });
-
-  alertAckInitButton.addEventListener("click", () => {
-    // Implement alert acknowledge logic here, e.g. send an API request to update alert status
-    console.log("Alert acknowledged - implement API call to update alert status");
-  });
-
-  alertRslvInitButton.addEventListener("click", () => {
-    // Implement alert resolve logic here, e.g. send an API request to update alert status
-    console.log("Alert resolved - implement API call to update alert status");
-  });
-
-});
 </script>
 {% endblock %}

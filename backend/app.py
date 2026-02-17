@@ -66,13 +66,41 @@ NET_ADMIN_INSTRUCTIONS = (
                             "If a user asks something unrelated to the provided tools or prompt, DO NOT answer the question. "
                             f"Instead, only reply with: '{REQUIRED_OUT_OF_SCOPE_MSG}.'. Do not give any other type of reply.\n"
                             "If you are asked about your architecture, provider, or model identity, only respond with: "
-                            "'I am a proprietary language model trained and developed by Baugh Consulting & Lab L.L.C.'\n"
+                            f"'I am a locally hosted, open source {str(os.environ.get('OLLAMA_MODEL'))} model running on ollama.'\n\n"
                         )                    
-SUMMARY_INSTRUCTIONS = (
-                                "You are a Network Admin assistant with knowledge of "
-                                "network engineering, network administration, firewall configurations, and securing networks according to"
-                                "NIST, PCI DSS, GDPR, HIPAA and SOC 2 compliance standards."
-                                "Your only task is to analyze the outputs of traceroutes, iperf speedtests, nmap network scans, SNMP statistics and network packet captures. You will use this analysis to troubleshoot network performance issues, diagnose network outages, identify anomalies within current and historical network data and provide suggestions for network performance improvements."
+ANALYSIS_INSTRUCTIONS = (
+                                "Your task is to analyze the outputs of traceroutes, iperf speedtests, nmap network scans, SNMP statistics and network packet captures from tcpdump and tshark (cli version of wireshark). You will use this analysis to identify, diagnose, troubleshoot and resolve network performance issues, outages and anomalies within current and historical network data and provide suggestions for network performance improvements only based on the specifications provided from the user input. When replying with the results of your analysis, always put 'SmartBot-Analysis: ' before your response.\n"
+
+                                "If the user asks you remediate any issues identified during your analysis, use any of the applicable tools provided by the MCP servers. Do not, under any circumstance, put 'SmartBot-Analysis: ' before your response when performing remediation.\n"
+
+                                "When analyzing network performance test outputs, look for indications of latency, packet loss, jitter, bandwidth bottlenecks, misconfigurations, security vulnerabilities and other factors that could impact network performance. Provide insights, identify potential issues and recommend improvements based on your analysis of the data.\n"
+
+                                "When analyzing network packet captures, look for indications of unusual traffic patterns, potential security threats, misconfigurations, and other factors that could impact network performance or security. Provide insights, identify potential issues and recommend improvements based on your analysis of the data.\n"
+
+                                "When analyzing SNMP data, look for indications of device performance issues, misconfigurations, hardware failures, and other factors that could impact network performance. Provide insights, identify potential issues and recommend improvements based on your analysis of the data.\n"
+                                "When analyzing nmap scan data, look for indications of open ports, potential vulnerabilities, misconfigurations, and other factors that could impact network security and performance. Provide insights, identify potential issues and recommend improvements based on your analysis of the data.\n" 
+
+                                "When analyzing iperf speedtest data, look for indications of bandwidth bottlenecks, latency, jitter, and other factors that could impact network performance. Provide insights, identify potential issues and recommend improvements based on your analysis of the data.\n"
+
+                                "When analyzing traceroute data, look for indications of latency, packet loss, routing issues, and other factors that could impact network performance. Provide insights, identify potential issues and recommend improvements based on your analysis of the data.\n"
+
+                                "When providing recommendations for improving network performance, consider best practices for network architecture, device configurations, security hardening, traffic management and other relevant factors. Your recommendations should be actionable and specific to the issues identified in the data you analyze. Always use your expertise in network administration and engineering to inform your analysis and recommendations.\n"
+
+                                "When providing recommendations for improving network security, consider best practices for securing networks according to NIST, PCI DSS, GDPR, HIPAA and SOC 2 compliance standards. Your recommendations should be actionable and specific to the issues identified in the data you analyze. Always use your expertise in network administration and engineering to inform your analysis and recommendations.\n"
+
+                                "When providing insights and analysis, be as detailed and specific as possible. Use your knowledge of network protocols, device behavior, security best practices, and performance optimization techniques to inform your analysis. Provide clear explanations for any issues you identify and the reasoning behind your recommendations.\n"
+
+                                "When diagnosing network anomalies, consider the potential root causes and contributing factors that could lead to anomalous behavior in the network. Provide a clear diagnosis of the issue based on the data you analyze and your expertise in network administration and engineering. Your diagnosis should be specific to the issues identified in the data and should inform your recommendations for resolving the anomaly and preventing future occurrences.\n"
+
+                                "When diagnosing network outages, consider the potential root causes and contributing factors that could lead to a network outage. Provide a clear diagnosis of the issue based on the data you analyze and your expertise in network administration and engineering. Your diagnosis should be specific to the issues identified in the data and should inform your recommendations for resolving the outage and preventing future occurrences.\n"
+
+                                "When diagnosing network security issues, consider the potential vulnerabilities, misconfigurations, and threats that could be present in the data you analyze. Provide a clear diagnosis of the issue based on the data and your expertise in network security. Your diagnosis should be specific to the issues identified in the data and should inform your recommendations for improving network security.\n"
+
+                                "When diagnosing network performance issues, consider the potential root causes and contributing factors. Provide a clear diagnosis of the issue based on the data you analyze and your expertise in network administration and engineering. Your diagnosis should be specific to the issues identified in the data and should inform your recommendations for improving network performance.\n"
+
+                                "When providing recommendations, be sure to consider the potential impact of your recommendations on the overall network architecture and performance. Provide specific steps for implementing your recommendations and any potential trade-offs or considerations that should be taken into account.\n"
+
+                                "Remember, your analysis and recommendations should be based solely on the data provided, the user's specifications and your knowledge of network administration and engineering. Do not make assumptions or provide recommendations that are not supported by the data or your expertise.\n"
                             )
 
 
@@ -219,6 +247,46 @@ async def usr_jwt_verification(sess_id: str, jwt_token: str, request: Request):
         return InvalidTokenError()
     except Exception:
         return jsonify("Error, occurred"), 400
+    
+async def prb_jwt_verification(usr: str, api_key: str, jwt_token: str, request: Request):
+    try:
+
+        if await cl_auth_db.get_all_data(match=f'*uid:{usr}*', cnfrm=True) is False:
+            await ip_blocker(conn_obj=request)
+            abort(401)
+        
+        usr_data = await cl_auth_db.get_all_data(match=f'*uid:{usr}*')
+        logger.info(usr_data)
+        usr_data_dict = next(iter(usr_data.values()))
+        logger.info(usr_data_dict)
+
+        api_data = await cl_data_db.get_all_data(match=f"api_dta:{usr_data_dict.get('db_id')}")
+
+        if api_data is None:
+            await ip_blocker(conn_obj=request)
+            abort(401)
+            
+        api_data_dict = next(iter(api_data.values()))
+        logger.info(api_data_dict)
+
+        jwt_key = api_data_dict.get(f'{api_name}_jwt_secret')
+        logger.info(jwt_key)
+        decoded_token = jwt.decode(jwt=jwt_token, key=jwt_key , algorithms=["HS256"])
+        logger.info(decoded_token)
+
+        if decoded_token.get('rand') != api_data_dict.get(f'{api_name}_rand') or bcrypt.verify(api_key,api_data_dict.get(api_name)) is False:
+            raise InvalidTokenError()
+        
+    except ExpiredSignatureError:
+        logger.warning("JWT expired, need to refresh token")
+        await ip_blocker(conn_obj=request)
+        abort(401)
+    except InvalidTokenError as e:
+        logger.error(f"JWT invalid: {e}")
+        await ip_blocker(conn_obj=request)
+        abort(401)
+    except Exception as e:
+        return jsonify({f'error occurred: {e}'})
 
 async def _receive() -> None:
     while True:
@@ -237,20 +305,15 @@ async def _receive() -> None:
                     }
 
                     logger.info(usr_msg_data)
-
-                    await cl_auth_db.connect_db()
-                    await cl_data_db.connect_db()
                     
                     if await cl_data_db.get_all_data(match=f'*uid:{message["usr"]}*', cnfrm=True) is True:
+                        agent_msg_data = {}
                         
-                        probes = await cl_data_db.get_all_data(match=f"*{message['prb_id']}*")
+                        selected_probe = await cl_data_db.get_all_data(match=f"*{message['prb_id']}*")
 
-                        logger.info(probes)
-
-                        for k, v in probes.items():
-                            if v['url'] in message['url']:
-                                api = v['prb_api_key']
-                                logger.info(api)
+                        selected_probe_dict = next(iter(selected_probe.values()))
+                        
+                        api = selected_probe_dict.get('prb_api_key')
 
                         processing_msg_data = {
                             "from": "agent",
@@ -263,10 +326,7 @@ async def _receive() -> None:
 
                         tool_request, analysis_request = await run_sync(lambda: util_obj.split_analysis(text=message['msg']))()
 
-                        logger.info(f'Tool request: {tool_request}')
-
-                        if analysis_request:
-                            logger.info(f'Analysis request: {analysis_request}')
+                        logger.info(f'Tool request: {tool_request}, Analysis request: {analysis_request}')
 
                         async with httpx.AsyncClient() as client:
                             payload = {
@@ -325,24 +385,33 @@ async def _receive() -> None:
                                         net_cmd_data = f'{line}\n'
                                         output_message+=net_cmd_data
 
-                                if analysis_request:
-                                    summary_msg = (
+                                if analysis_request != "":
+                                    analysis_msg = (
                                         f"{output_message}\n\n"
                                         f"{analysis_request}"
                                         )
+                                    
+                                    NET_ADMIN_INSTRUCTIONS += ANALYSIS_INSTRUCTIONS
 
-                                    smmry_payload = {
+                                    payload = {
                                         'model': os.environ.get('OLLAMA_MODEL'),
-                                        'usr_input':f"{summary_msg}",
-                                        'instructions': SUMMARY_INSTRUCTIONS,
-                                        'url': message['url'],
+                                        'tools':[
+                                                {
+                                                    "type": "mcp",
+                                                    "server_label": "netadmin_mcp_server",
+                                                    "server_url": f"{message['url']}",
+                                                    "require_approval": "never",
+                                                },
+                                            ],
+                                        'usr_input':f"{analysis_msg}",
+                                        'instructions': NET_ADMIN_INSTRUCTIONS,
                                         'api_key': api,
                                         'user': message['usr'],
+                                        'tool_instructions': tool_msg['tool_instructions']
                                     }
 
-                                    smmry_resp = await client.post(f"{os.environ.get('OLLAMA_PROXY_URL')}/analysis", json=smmry_payload, headers=headers, timeout=int(os.environ.get('REQUEST_TIMEOUT')))
+                                    smmry_resp = await client.post(f"{os.environ.get('OLLAMA_PROXY_URL')}/multitools", json=smmry_payload, headers=headers, timeout=int(os.environ.get('REQUEST_TIMEOUT')))
 
-                                    logger.info(smmry_resp)
                                     logger.info(smmry_resp.json())
 
                                     summary_msg = smmry_resp.json()
@@ -351,31 +420,36 @@ async def _receive() -> None:
                                     final_output+=f'{output_message}\n\n'
                                     final_output+=summary_msg['output_text']
                                     logger.info(final_output)
+                                    agent_msg_data['query_type'] = 'tool_analysis'
                                 else:
                                     final_output = output_message
+                                    agent_msg_data['query_type'] = 'tool'      
                                     
                                 time_stamp = datetime.now(timezone.utc).isoformat()
 
-                                chat_data_id = f"chat:{message['usr']}:{tool_msg['id']}{time_stamp}"
+                                chat_data_id = f"chat:{message['prb_id']}:{message['usr']}:{time_stamp}"
 
                                 chat_data = {'id': chat_data_id,
                                             'usr_msg': message["msg"],
                                             'agent_msg': final_output,
-                                            'timestamp': time_stamp
+                                            'prb_id': message['prb_id'],
+                                            'timestamp': time_stamp,
+                                            'type': agent_msg_data['query_type'],
+                                            'tool_calls': tool_msg['tool_calls'],
+                                            'tool_outputs': tool_msg['tool_outputs'],
                                             }
 
                                 if await cl_data_db.upload_db_data(id=chat_data_id, data=chat_data) > 0:
                                     logger.info(f"Chat data uploaded successfully with id: {chat_data_id}")
                                 
-                                agnt_msg_data = {
-                                    "from": "agent",
-                                    "msg": final_output,
-                                    "url": message["url"],
-                                    "usr_id": message['usr_id'],
-                                    "final_output": 'y'
-                                }
+                                agent_msg_data['from'] = "agent"
+                                agent_msg_data['msg'] = final_output
+                                agent_msg_data['url'] = message["url"]
+                                agent_msg_data['usr_id'] = message['usr_id']
+                                agent_msg_data['prb_id'] = message['prb_id']
+                                agent_msg_data['final_output'] = 'y'
                         
-                                await broker.publish(message=json.dumps(agnt_msg_data))
+                                await broker.publish(message=json.dumps(agent_msg_data))
                             
                 case 'ping':
                     logger.debug(f"Received ping message: {message}")
@@ -491,7 +565,7 @@ async def _receive() -> None:
                         smmry_payload = {
                                         'model': os.environ.get('OLLAMA_MODEL'),
                                         'usr_input':f"{llm_request}",
-                                        'instructions': SUMMARY_INSTRUCTIONS,
+                                        'instructions': ANALYSIS_INSTRUCTIONS,
                                         'url': message['url'],
                                         'api_key': api,
                                         'user': message['assigned_user'],
@@ -893,60 +967,20 @@ async def enroll():
     
     if not site:
         site = 'default'
+
+    await prb_jwt_verification(usr=usr, jwt_token=jwt_token, request=request, api_key=api_key)
+
+    # Adopt new probe
+    adopted_probe_data = await request.get_json()
+    logger.info(adopted_probe_data)
         
-    await cl_auth_db.connect_db()
-    await cl_data_db.connect_db()
+    adopted_probe_data['db_id'] = f"prb:{adopted_probe_data['site']}:{str(uuid.uuid4())}:{adopted_probe_data['prb_id']}"
+    logger.info(adopted_probe_data)
 
-    try:
-
-        if await cl_auth_db.get_all_data(match=f'*uid:{usr}*', cnfrm=True) is False:
-            await ip_blocker(conn_obj=request)
-            abort(401)
-        
-        usr_data = await cl_auth_db.get_all_data(match=f'*uid:{usr}*')
-        logger.info(usr_data)
-        usr_data_dict = next(iter(usr_data.values()))
-        logger.info(usr_data_dict)
-
-        api_data = await cl_data_db.get_all_data(match=f"api_dta:{usr_data_dict.get('db_id')}")
-
-        if api_data is None:
-            await ip_blocker(conn_obj=request)
-            abort(401)
-            
-        api_data_dict = next(iter(api_data.values()))
-        logger.info(api_data_dict)
-
-        jwt_key = api_data_dict.get(f'{api_name}_jwt_secret')
-        logger.info(jwt_key)
-        decoded_token = jwt.decode(jwt=jwt_token, key=jwt_key , algorithms=["HS256"])
-        logger.info(decoded_token)
-
-        if decoded_token.get('rand') != api_data_dict.get(f'{api_name}_rand') or bcrypt.verify(api_key,api_data_dict.get(api_name)) is False:
-            raise InvalidTokenError()
-                
-        # Adopt new probe
-        adopted_probe_data = await request.get_json()
-        logger.info(adopted_probe_data)
-        
-        adopted_probe_data['db_id'] = f"prb:{adopted_probe_data['site']}:{str(uuid.uuid4())}:{adopted_probe_data['prb_id']}"
-        logger.info(adopted_probe_data)
-
-        if await cl_data_db.upload_db_data(id=adopted_probe_data['db_id'], data=adopted_probe_data) > 0:
-            return jsonify({'status':'probe adopted'})
-        else:
-            return jsonify({'status':'probe adoption failed'}), 400
-        
-    except ExpiredSignatureError:
-        logger.warning("JWT expired, need to refresh token")
-        await ip_blocker(conn_obj=request)
-        abort(401)
-    except InvalidTokenError as e:
-        logger.error(f"JWT invalid: {e}")
-        await ip_blocker(conn_obj=request)
-        abort(401)
-    except Exception as e:
-        return jsonify({f'error occurred: {e}'})
+    if await cl_data_db.upload_db_data(id=adopted_probe_data['db_id'], data=adopted_probe_data) > 0:
+        return jsonify({'status':'probe adopted'})
+    else:
+        return jsonify({'status':'probe adoption failed'}), 400
     
 @app.route('/v1/api/core/probes/<string:prb_id>/exec', methods=['POST'])
 async def exec(prb_id):
@@ -959,93 +993,53 @@ async def exec(prb_id):
     if not api_key or not usr or not jwt_token:
         await ip_blocker(conn_obj=request)
         abort(401)
-        
-    await cl_auth_db.connect_db()
-    await cl_data_db.connect_db()
 
-    try:
+    await prb_jwt_verification(usr=usr, jwt_token=jwt_token, request=request, api_key=api_key)
 
-        if await cl_auth_db.get_all_data(match=f'*uid:{usr}*', cnfrm=True) is False:
-            await ip_blocker(conn_obj=request)
-            abort(401)
-        
-        usr_data = await cl_auth_db.get_all_data(match=f'*uid:{usr}*')
-        logger.info(usr_data)
-        usr_data_dict = next(iter(usr_data.values()))
-        logger.info(usr_data_dict)
+    data = await request.get_json()
 
-        api_data = await cl_data_db.get_all_data(match=f"api_dta:{usr_data_dict.get('db_id')}")
+    if not data['prb_id']:
+        await ip_blocker(conn_obj=request)
+        abort(401)
 
-        if api_data is None:
-            await ip_blocker(conn_obj=request)
-            abort(401)
-            
-        api_data_dict = next(iter(api_data.values()))
-        logger.info(api_data_dict)
+    if await cl_data_db.get_all_data(match=f"*{prb_id}*", cnfrm=True) is False:
+        await ip_blocker(conn_obj=request)
+        abort(401)
 
-        jwt_key = api_data_dict.get(f'{api_name}_jwt_secret')
-        logger.info(jwt_key)
-        decoded_token = jwt.decode(jwt=jwt_token, key=jwt_key , algorithms=["HS256"])
-        logger.info(decoded_token)
+    prb_data = await cl_data_db.get_all_data(match=f"*{prb_id}*")
+    logger.info(prb_data)
+    prb_data_dict = next(iter(prb_data.values()))
+    logger.info(prb_data_dict)
 
-        if decoded_token.get('rand') != api_data_dict.get(f'{api_name}_rand') or bcrypt.verify(api_key,api_data_dict.get(api_name)) is False:
-            raise InvalidTokenError()
-        
-        data = await request.get_json()
+    async with httpx.AsyncClient() as client:
+        data['prb-api-key'] = prb_data_dict.get('prb_api_key')
+        data['prb-url'] = prb_data_dict.get('url')
 
-        if not data['prb_id']:
-            await ip_blocker(conn_obj=request)
-            abort(401)
-
-        await cl_data_db.connect_db()
-        if await cl_data_db.get_all_data(match=f"*{prb_id}*", cnfrm=True) is False:
-            await ip_blocker(conn_obj=request)
-            abort(401)
-
-        prb_data = await cl_data_db.get_all_data(match=f"*{prb_id}*")
-        logger.info(prb_data)
-        prb_data_dict = next(iter(prb_data.values()))
-        logger.info(prb_data_dict)
-
-        async with httpx.AsyncClient() as client:
-            data['prb-api-key'] = prb_data_dict.get('prb_api_key')
-            data['prb-url'] = prb_data_dict.get('url')
-
-            headers = {'content-type': 'application/json'}
+        headers = {'content-type': 'application/json'}
                             
-            exec_resp = await client.post(f"{os.environ.get('OLLAMA_PROXY_URL')}/exec", json=data, headers=headers, timeout=int(os.environ.get('REQUEST_TIMEOUT')))
+        exec_resp = await client.post(f"{os.environ.get('OLLAMA_PROXY_URL')}/exec", json=data, headers=headers, timeout=int(os.environ.get('REQUEST_TIMEOUT')))
 
-            if exec_resp.status_code == 200:
-                exec_data = await exec_resp.json()
-                output_message = ""
-                logger.info(f"Request result = {exec_data['output_text']}\n")
-                logger.info(type(exec_data['output_text']))
+        if exec_resp.status_code == 200:
+            exec_data = await exec_resp.json()
+            output_message = ""
+            logger.info(f"Request result = {exec_data['output_text']}\n")
+            logger.info(type(exec_data['output_text']))
 
-                exec_data_json = json.loads(exec_data['output_text'])
+            exec_data_json = json.loads(exec_data['output_text'])
 
-                for item in exec_data_json:
-                    net_cmd_output = item['output'][1]
-                    logger.info(f"Net command output: {net_cmd_output}")
-                    decoded_output = net_cmd_output.encode('utf-8').decode('unicode_escape')
-                    lines = decoded_output.split('\n')
+            for item in exec_data_json:
+                net_cmd_output = item['output'][1]
+                logger.info(f"Net command output: {net_cmd_output}")
+                decoded_output = net_cmd_output.encode('utf-8').decode('unicode_escape')
+                lines = decoded_output.split('\n')
 
-                    for i, line in enumerate(lines):
-                        net_cmd_data = f'{line}\n'
-                        output_message+=net_cmd_data
-                return jsonify({'output': output_message}), 200
-            else:
-                return jsonify({'status':'error'}), 400
-        
-    except ExpiredSignatureError:
-        logger.warning("JWT expired, need to refresh token")
-        await ip_blocker(conn_obj=request)
-        abort(401)
-    except InvalidTokenError as e:
-        logger.error(f"JWT invalid: {e}")
-        await ip_blocker(conn_obj=request)
-        abort(401)
-    except Exception as e:
-        return jsonify({f'error occurred: {e}'})
+                for i, line in enumerate(lines):
+                    net_cmd_data = f'{line}\n'
+                    output_message+=net_cmd_data
+
+            return jsonify({'output': output_message}), 200
+        else:
+            return jsonify({'status':'error'}), 400
     
 @app.route('/v1/api/core/probes/delete', methods=['POST'])
 async def delete():

@@ -226,6 +226,17 @@
                 
               </ul>
             </li>
+            <li class="nav-item dropdown pe-2 d-flex align-items-center">
+              <a href="javascript:;" class="nav-link text-body p-0" id="dropdownSettingsButton" data-bs-toggle="dropdown" aria-expanded="false">
+                <i class="fa fa-cog cursor-pointer"></i>
+              </a>
+              <ul id="settings-list" class="dropdown-menu  dropdown-menu-end  px-2 py-3 me-sm-n4" aria-labelledby="dropdownSettingsButton">
+                <li><a class="dropdown-item" href="#">Action</a></li>
+                <li><a class="dropdown-item" href="#">Another action</a></li>
+                <li><a class="dropdown-item" href="#">Something else here</a></li>
+                
+              </ul>
+            </li>
             <li class="nav-item px-3 d-flex align-items-center">
               <a href="{{ url_for('settings', cmp_id=cmp_id, obsc=obsc_key) }}" class="nav-link text-body p-0">
                 <i class="fa fa-cog fixed-plugin-button-nav cursor-pointer"></i>
@@ -465,7 +476,7 @@
 
     connectWebSocket();
 
-    let selectedValue = document.getElementById("mcp-dropdown");
+    let selectedProbe = document.getElementById("mcp-dropdown");
     const chatInput = document.getElementById("chat-input");
     const chatSend = document.getElementById("chat-send");
     const smartbotInitSwitch = document.getElementById("smartbotInitSwitch");
@@ -538,8 +549,7 @@
       buttonText.textContent = "Processing...";
       smartbotSend.disabled = true;
                 
-      if (!selectedValue.value || !chatInput.value.trim()) {
-        alert('Make a probe selection or enter a chat query.');
+      if (!selectedProbe.value || !chatInput.value.trim()) {
         spinner.classList.remove('d-inline-block');
         spinner.classList.add('d-none');
         buttonText.textContent = "Send";
@@ -556,16 +566,16 @@
 
       ws.send(JSON.stringify({
         act: "llm",
-        url: selectedValue.value,
+        url: selectedProbe.value,
         usr: currentUser,
-        prb_id: selectedValue.dataset.pid,
+        prb_id: selectedProbe.dataset.pid,
         from: "user",
         msg: msg,
         usr_id: curUsrID
       }));
 
-      const chatWin = document.getElementById(`chat-${selectedValue.value}`);
-      showChat(selectedValue.value);
+      const chatWin = document.getElementById(`chat-${selectedProbe.value}`);
+      showChat(selectedProbe.value);
       appendUserMessage(chatWin, "user", msg);
     }
 
@@ -1227,16 +1237,16 @@
     // chat selection
     document.querySelectorAll("#mcp-list li").forEach(li => {
       li.addEventListener("click", () => {
-        selectedValue.value = li.dataset.value;
-        showChat(selectedValue.value);
-        document.getElementById("mcp-dropdown").value = selectedValue.value;
-        selectedValue.dataset.pid = li.dataset.pid;
+        selectedProbe.value = li.dataset.value;
+        showChat(selectedProbe.value);
+        document.getElementById("mcp-dropdown").value = selectedProbe.value;
+        selectedProbe.dataset.pid = li.dataset.pid;
       });
     });
     document.getElementById("mcp-dropdown").addEventListener("change", e => {
-      selectedValue.value = e.target.value;
-      selectedValue.dataset.pid = e.target.selectedOptions[0].dataset.pid;
-      showChat(selectedValue.value);
+      selectedProbe.value = e.target.value;
+      selectedProbe.dataset.pid = e.target.selectedOptions[0].dataset.pid;
+      showChat(selectedProbe.value);
     });
     // close all modals but the one you want to open
     const $modals = document.querySelectorAll('.modal');

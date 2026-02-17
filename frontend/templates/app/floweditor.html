@@ -26,20 +26,6 @@
           <li onclick="editor.changeModule('Home'); changeModule(event);" class="selected">Home</li>
           <li>
             <div class="dropdown">
-              <button class="btn btn-secondary dropdown-toggle" type="button" id="flowDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                Assign Flow to Probe:
-              </button>
-              <ul class="dropdown-menu" aria-labelledby="flowDropdown">
-                {% for probe in all_probes.values() %}
-                  <li>
-                    <div class="dropdown-item" value="{{ probe.prb_id }}">Site: {{ probe.site }} | Name: {{ probe.name }}</div>
-                  </li>
-                {% endfor %}
-              </ul>
-            </div>
-          </li>
-          <li>
-            <div class="dropdown">
               <button class="btn btn-secondary dropdown-toggle" type="button" id="actionDropdown" data-bs-toggle="dropdown" aria-expanded="false">
                 Tools
               </button>
@@ -116,6 +102,7 @@
   <script>
     const mntrURL = "{{ mntr_url }}";
     const flowID = "{{ flow_id }}";
+    const prbID = "{{ prb_id }}";
     let nodeProbeCounter = 0;
     let currentProbeNodes = {};
     let currentSelectedProbe = null;
@@ -214,20 +201,9 @@
 
     /* DRAG EVENT */
 
-    // Track selected flow
-    let selectedFlow = null;
-
-    // Add event listeners to dropdown items
-    document.querySelectorAll('#flowDropdown + .dropdown-menu .dropdown-item').forEach(item => {
-      item.addEventListener('click', function(event) {
-        selectedFlow = this.getAttribute('value');
-        console.log(selectedFlow);
-      });
-    });
-
     // Save flow
     document.getElementById('save-flow').addEventListener('click', async ()=>{
-      if (selectedFlow === null && flowID === "default") {
+      if (flowID === "default") {
         document.getElementById('notificationModalLabel').textContent = "No Probe Selected";
 
         document.getElementById('notif-modal-text').textContent = `Please select a main probe for this flow before saving. Select a probe from the "Assign Flow to Probe" dropdown menu.`;
@@ -249,14 +225,14 @@
     
 
           } else {
-            const payload = {flow: flow, probe: selectedFlow, name: savename}
+            const payload = {flow: flow, probe: prbID, name: savename}
             resp = await fetch(`https://${mntrURL}/v1/api/core/flow/save?usr={{ cur_usr }}`, {method:'POST', credentials: "same-origin", body:JSON.stringify(payload)});
           }
           
           if (resp.ok) {
             document.getElementById('notificationModalLabel').textContent = "Flow Saved Successfully";
 
-            document.getElementById('notif-modal-text').textContent = `The flow: "${savename}" has been saved successfully and assigned to probe: "${selectedFlow}".`;
+            document.getElementById('notif-modal-text').textContent = `The flow: "${savename}" has been saved successfully and assigned to probe: "${prbID}".`;
 
             notificationModal.show();
           } else {
@@ -265,6 +241,7 @@
             document.getElementById('notif-modal-text').textContent = `There was an error saving the flow: "${savename}". Please try again.`;
 
             notificationModal.show();
+            return false;
           }
         } else {
           document.getElementById('notificationModalLabel').textContent = "No Flow Name";
