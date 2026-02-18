@@ -18,7 +18,7 @@
                   <label for="mcp-dropdown" class="form-label">Select MCP Option:</label>
                   <select id="mcp-dropdown" class="form-select">
                     {% for opt in options.values() %}
-                      <option value="{{ opt.url }}/llm/mcp" data-pid="{{ opt.prb_id }}">{{ opt.name }}</option>
+                      <option value="{{ opt.url }}/llm/mcp" data-pid="{{ opt.prb_id }}" data-api="{{ opt.prb_api_key }}">{{ opt.name }}</option>
                     {% endfor %}
                   </select>
                 </div>
@@ -27,7 +27,7 @@
                 <div style="position: relative; height: 400px; overflow-y:auto;" id="mcp-list-container">
                   <ul class="list-unstyled mb-0" id="mcp-list">
                     {% for opt in options.values() %}
-                      <li class="p-2 border-bottom" data-value="{{ opt.url }}/llm/mcp" data-pid="{{ opt.prb_id }}">
+                      <li class="p-2 border-bottom" data-value="{{ opt.url }}/llm/mcp" data-pid="{{ opt.prb_id }}" data-api="{{ opt.prb_api_key }}">
                         <a href="#!" class="d-flex justify-content-between">
                           <div class="d-flex flex-row">
                             <img src="{{ url_for('static', filename='img/bcl/' + opt.status + '.svg') }}" alt="probe-status"
@@ -56,7 +56,8 @@
                                   data-name="{{ opt.name|e }}"
                                   data-url="{{ opt.url|e }}"
                                   data-site="{{ opt.site|e }}"
-                                  data-id="{{ opt.prb_id|e }}">
+                                  data-id="{{ opt.prb_id|e }}"
+                                  data-api="{{ opt.prb_api_key|e }}">
                                 Delete Probe
                               </button>
                             </div>

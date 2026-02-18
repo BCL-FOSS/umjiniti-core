@@ -403,7 +403,7 @@ async def _receive() -> None:
                                                     "require_approval": "never",
                                                 },
                                             ],
-                                        'usr_input':f"{analysis_msg}",
+                                        'usr_input': f"{analysis_msg}",
                                         'instructions': NET_ADMIN_INSTRUCTIONS,
                                         'api_key': api,
                                         'user': message['usr'],
