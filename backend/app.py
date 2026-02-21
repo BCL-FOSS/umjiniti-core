@@ -286,6 +286,10 @@ async def smartbot_processing(payload: dict, message: dict, headers: dict):
         summary_msg = smmry_resp.json()
 
         output = summary_msg['output_text']
+
+        if connected_probes.get(message['prb_id']).get('tool_instructions') is None:
+            connected_probes.get(message['prb_id'])['tool_instructions'] = summary_msg['tool_instructions']
+
         smartbot_alert = None
 
         smartbot_suggestion = await run_sync(lambda: util_obj.split_text_by_keyword(text=output, keyword='SmartBot-Remediation', cnfrm=True))()
@@ -485,6 +489,9 @@ async def _receive() -> None:
                                             'tool_calls': tool_msg['tool_calls'],
                                             'tool_outputs': tool_msg['tool_outputs'],
                                             }
+                                
+                                if connected_probes.get(message['prb_id']):
+                                    connected_probes[message['prb_id']]['tool_instructions'] = tool_msg['tool_instructions']
 
                                 if await cl_data_db.upload_db_data(id=chat_data_id, data=chat_data) > 0:
                                     logger.info(f"Chat data uploaded successfully with id: {chat_data_id}")
@@ -524,6 +531,9 @@ async def _receive() -> None:
                         'api_key': message['prb_api_key']
                     }
 
+                    if connected_probes.get(message['prb_id']):
+                        flow_payload['tool_instructions'] = connected_probes[message['prb_id']]['tool_instructions']
+
                     await smartbot_processing(payload=flow_payload, message=message, headers=headers)
 
                 case 'smartbot_task':
@@ -552,9 +562,11 @@ async def _receive() -> None:
                         'api_key': message['prb_api_key']
                     }
 
+                    if connected_probes.get(message['prb_id']):
+                        task_payload['tool_instructions'] = connected_probes[message['prb_id']]['tool_instructions']
+
                     await smartbot_processing(payload=task_payload, message=message, headers=headers)
 
-                            
                 case 'ping':
                     logger.debug(f"Received ping message: {message}")
 
