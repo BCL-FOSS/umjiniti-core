@@ -369,12 +369,12 @@ async def logout(auth_id):
         resp.delete_cookie("api_access_token")
         return resp
 
-@app.route('/dashboard', defaults={'cmp_id': url_cmp_id,'obsc': url_key}, methods=['GET', 'POST'])
-@app.route("/dashboard/<string:cmp_id>/<string:obsc>", methods=['GET', 'POST'])
+@app.route('/dashboard', defaults={'cmp_id': url_cmp_id,'obsc': url_key, 'prb_id': 'default'}, methods=['GET', 'POST'])
+@app.route("/dashboard/<string:cmp_id>/<string:obsc>/<string:prb_id>", methods=['GET', 'POST'])
 @user_login_required
-async def dashboard(cmp_id, obsc):
+async def dashboard(cmp_id, obsc, prb_id):
     cur_usr_id = current_client.auth_id
-
+    session["csrf_ready"] = True
     user_data, ws_url = await retrieve_user_sess_data(sess_id=cur_usr_id)
 
     return await render_template("app/dashboard.html", obsc_key=session.get('url_key'), cmp_id=cmp_id, cur_usr_id=cur_usr_id, ws_url=ws_url, cur_usr=user_data.get('unm'), data=user_data)
@@ -384,7 +384,7 @@ async def dashboard(cmp_id, obsc):
 @user_login_required
 async def smartbot(cmp_id, obsc):
     cur_usr_id = current_client.auth_id
-
+    session["csrf_ready"] = True
     user_data, ws_url = await retrieve_user_sess_data(sess_id=cur_usr_id)
 
     probe_data = await cl_data_db.get_all_data(match=f"prb:*")
@@ -409,6 +409,7 @@ async def settings(cmp_id, obsc):
 @user_login_required
 async def floweditor(cmp_id, obsc, flow_id, prb_id):
     cur_usr_id = current_client.auth_id
+    session["csrf_ready"] = True
     user_data, ws_url = await retrieve_user_sess_data(sess_id=cur_usr_id)
 
     probe_data = await cl_data_db.get_all_data(match=f"prb:*")
@@ -424,6 +425,7 @@ async def floweditor(cmp_id, obsc, flow_id, prb_id):
 @user_login_required
 async def probe(cmp_id, obsc, prb_id):
     cur_usr_id = current_client.auth_id
+    session["csrf_ready"] = True
     user_data, ws_url = await retrieve_user_sess_data(sess_id=cur_usr_id)
 
     if prb_id != "default":
@@ -448,21 +450,29 @@ async def probe(cmp_id, obsc, prb_id):
     return await render_template("app/probe.html", obsc_key=session.get('url_key') ,
                                 flows=flows, cmp_id=cmp_id, mntr_url=mntr_url, cur_usr=user_data.get('unm'), cur_usr_id=cur_usr_id, ws_url=ws_url, data=user_data, probe_id=prb_id, trace_results=trace_results, perf_results=perf_results, scan_results=scan_results, pcap_results=pcap_results, all_tasks=all_tasks, probe_data=probe_data_dict)
 
-@app.route('/alerts', defaults={'cmp_id': 'bcl','obsc': url_key}, methods=['GET', 'POST'])
-@app.route("/alerts/<string:cmp_id>/<string:obsc>", methods=['GET', 'POST'])
+@app.route('/alerts', defaults={'cmp_id': 'bcl','obsc': url_key, 'prb_id': 'default', 'alert_type': 'default'}, methods=['GET', 'POST'])
+@app.route("/alerts/<string:cmp_id>/<string:obsc>/<string:prb_id>/<string:alert_type>", methods=['GET', 'POST'])
 @user_login_required
-async def alerts(cmp_id, obsc):
+async def alerts(cmp_id, obsc, prb_id, alert_type):
     cur_usr_id = current_client.auth_id
+    session["csrf_ready"] = True
     user_data, ws_url = await retrieve_user_sess_data(sess_id=cur_usr_id)
 
+    if await cl_sess_db.get_all_data(match=f"alert:", cnfrm=True) is False:
+        alerts = {'':''}
+
+    if prb_id != "default" and alert_type != "default":
+        alerts = await cl_data_db.get_all_data(match=f"alert:{prb_id}:{alert_type}:*")
+
     return await render_template("app/alerts.html", obsc_key=session.get('url_key') ,
-                                  cmp_id=cmp_id, ws_url=ws_url, cur_usr=user_data.get('unm'), data=user_data, cur_usr_id=cur_usr_id)
+                                  cmp_id=cmp_id, ws_url=ws_url, cur_usr=user_data.get('unm'), data=user_data, cur_usr_id=cur_usr_id, alerts=alerts)
 
 @app.route('/chats', defaults={'cmp_id': 'bcl','obsc': url_key, 'usr': 'default', 'prb_id': 'default'}, methods=['GET', 'POST'])
 @app.route("/chats/<string:cmp_id>/<string:obsc>/<string:usr>/<string:prb_id>", methods=['GET', 'POST'])
 @user_login_required
 async def chats(cmp_id, obsc, usr, prb_id):
     cur_usr_id = current_client.auth_id
+    session["csrf_ready"] = True
     user_data, ws_url = await retrieve_user_sess_data(sess_id=cur_usr_id)
 
     if usr != "default":

@@ -29,7 +29,6 @@ from ai.smartbot.utils.EmailSenderHandler import EmailSenderHandler
 import uuid
 import ast
 
-# Session and Auth Redis DB init
 cl_sess_db = RedisDB(hostname=os.environ.get('CLIENT_SESS_DB'), 
                                                     port=os.environ.get('CLIENT_SESS_DB_PORT'))
 cl_auth_db = RedisDB(hostname=os.environ.get('CLIENT_AUTH_DB'), 
@@ -38,7 +37,6 @@ cl_data_db = RedisDB(hostname=os.environ.get('CLIENT_DATA_DB'),
                                                     port=os.environ.get('CLIENT_DATA_DB_PORT'))
 ip_ban_db = RedisDB(hostname=os.environ.get('IP_BAN_DB'), 
                     port=os.environ.get('IP_BAN_DB_PORT'))
-# Websocket rate limit init
 ws_rate_limiter = WSRateLimiter(redis_host=os.environ.get('RATE_LIMIT_DB'), 
                                 redis_port=os.environ.get('RATE_LIMIT_DB_PORT'))
 
@@ -69,8 +67,23 @@ NET_ADMIN_INSTRUCTIONS = (
                             f"'I am a locally hosted, open source {str(os.environ.get('OLLAMA_MODEL'))} model running on ollama.'\n\n"
                         )                    
 ANALYSIS_INSTRUCTIONS = (
-    "Your primary task is to analyze the outputs of traceroutes, iperf speedtests, nmap network scans, SNMP statistics and network packet captures from tcpdump and tshark (cli version of wireshark) to identify, diagnose, troubleshoot and resolve network performance issues, outages and anomalies within current and historical network data. You will provide suggestions for network performance improvements only based on the specifications provided from the user prompt. If you are asked just to conduct an analysis always put 'SmartBot-Analysis:' before your response. If you are asked to remediate any issues found dring your analysis, use any of the applicable tools provided by the MCP servers. If the available tools are insufficient to perform remediation, reply with a detailed report of your findings, the steps you'd take to resolve any issues identified and what exact tools (command line network utilities, firewall/switch configurations etc.) and exact network command line tool commands you would use during the remediation process. Put 'SmartBot-Remediation: ' before your response.\n"
+    "Your primary task is to analyze the outputs of traceroutes, iperf speedtests, nmap network scans, SNMP statistics and network packet captures from tcpdump and tshark (cli version of wireshark) to identify, diagnose, troubleshoot and resolve network performance issues, outages and anomalies within current and historical network data. You will provide suggestions for network performance improvements only based on the specifications provided from the user prompt. If you are asked just to conduct an analysis always put 'SmartBot-Analysis:' before your response. If you are asked to remediate any issues found dring your analysis, use any of the applicable tools provided by the MCP servers. If the available tools are insufficient to perform remediation, reply with a detailed report of your findings, the steps you'd take to resolve any issues identified and what exact tools (command line network utilities, firewall/switch configurations etc.) and exact network command line tool commands you would use during the remediation process. Put 'SmartBot-Remediation: ' before your response. If you are asked to analyze if specific data within the network commandline utilities outputs meet certain criteria or KPI metrics specified by the user, put 'SmartBot-Alert:' before your response.\n"
                                 )
+
+def load_network_diagnostic_prompt() -> str:
+    try:
+        base_dir = os.path.dirname(os.path.abspath(__file__))  # backend/
+        prompt_path = os.path.join(base_dir, "ai", "smartbot", "network-diagnostic-system-prompt.md")
+        with open(prompt_path, "r", encoding="utf-8") as f:
+            return f.read()
+    except Exception as e:
+        logger.exception(f"Failed to load network diagnostic system prompt: {e}")
+        return ""
+
+NETWORK_DIAGNOSTIC_SYSTEM_PROMPT_MD = load_network_diagnostic_prompt()
+
+logger.info(f"Network diagnostic system prompt loaded successfully.\n {NETWORK_DIAGNOSTIC_SYSTEM_PROMPT_MD[:500]}...")
+
 # Helper functions to quantize datetimes to 5-minute increments
 def round_down_to_5min(dt: datetime) -> datetime:
     """Round dt down (floor) to the nearest 5-minute boundary."""
@@ -294,26 +307,51 @@ async def smartbot_processing(payload: dict, message: dict, headers: dict):
 
         smartbot_suggestion = await run_sync(lambda: util_obj.split_text_by_keyword(text=output, keyword='SmartBot-Remediation', cnfrm=True))()
         smartbot_analysis = await run_sync(lambda: util_obj.split_text_by_keyword(text=output, keyword='SmartBot-Analysis', cnfrm=True))()
+        smartbot_alert = await run_sync(lambda: util_obj.split_text_by_keyword(text=output, keyword='SmartBot-Alert', cnfrm=True))()
 
         if smartbot_suggestion is not None:
             smartbot_alert = {
-                            'llm_output': smartbot_suggestion,
-                            'alerts': message['alerts'],
-                            'oper': 'alert'
+                'llm_output': smartbot_suggestion,
+                'alerts': message['alerts'],
+                'oper': 'alert'
                         }
 
             await send_processed_data_to_probe(data_to_send=smartbot_alert)
 
         if smartbot_analysis is not None:
             smartbot_alert = {
-                            'llm_output': smartbot_analysis,
-                            'alerts': message['alerts'],
-                            'oper': 'alert'
+                'llm_output': smartbot_analysis,
+                'alerts': message['alerts'],
+                'oper': 'alert'
                         }
 
             await send_processed_data_to_probe(data_to_send=smartbot_alert)
 
-        if smartbot_suggestion is None and smartbot_analysis is None:
+        if smartbot_alert is not None:
+            smartbot_alert = {
+                'llm_output': smartbot_alert,
+                'alerts': message['alerts'],
+                'oper': 'alert'
+                        }
+            
+            now = datetime.now(tz=timezone.utc)
+            probe_outage_data = {'alert_type': 'smartbot',
+                                'site': message['site'],
+                                'name': message['name'],
+                                'prb_id': message['prb_id'],
+                                'msg': smartbot_alert,
+                                'timestamp': now.isoformat()}
+                    
+            alert_id = f"alert:{message['prb_id']}:{probe_outage_data['alert_type']}:{now.isoformat()}"
+
+            probe_outage_data['id'] = alert_id
+                    
+            if await cl_data_db.upload_db_data(id=alert_id, data=probe_outage_data) > 0:
+                logger.info(f"Probe outage alert data uploaded successfully with id: {alert_id}")
+            
+            await send_processed_data_to_probe(data_to_send=smartbot_alert)
+
+        if smartbot_suggestion is None and smartbot_analysis is None and smartbot_alert is None:
 
             output_message = ""
             logger.info(f"Request result = {output['output_text']}\n")
@@ -438,11 +476,26 @@ async def _receive() -> None:
 
                                 if analysis_request != "":
                                     analysis_msg = (
-                                        f"{output_message}\n\n"
+                                        f"{output_message}"
+                                        + "\n\n"
                                         f"{analysis_request}"
                                         )
                                     
-                                    NET_ADMIN_INSTRUCTIONS += ANALYSIS_INSTRUCTIONS
+                                    analysis_instructions = (
+                                        NET_ADMIN_INSTRUCTIONS
+                                        + "\n\n"
+                                        + ANALYSIS_INSTRUCTIONS
+                                        + "\n\n"
+                                        + NETWORK_DIAGNOSTIC_SYSTEM_PROMPT_MD
+                                    )
+
+                                    tool_instructions = ""
+
+                                    if connected_probes.get(message['prb_id'])['tool_instructions'] is None:
+                                        connected_probes[message['prb_id']]['tool_instructions'] = tool_msg['tool_instructions']
+                                        tool_instructions = tool_msg['tool_instructions']
+                                    else:
+                                        tool_instructions = connected_probes.get(message['prb_id'])['tool_instructions']
 
                                     analysis_payload = {
                                         'model': os.environ.get('OLLAMA_MODEL'),
@@ -455,10 +508,10 @@ async def _receive() -> None:
                                                 },
                                             ],
                                         'usr_input': f"{analysis_msg}",
-                                        'instructions': NET_ADMIN_INSTRUCTIONS,
+                                        'instructions': analysis_instructions,
                                         'api_key': api,
                                         'user': message['usr'],
-                                        'tool_instructions': tool_msg['tool_instructions']
+                                        'tool_instructions': tool_instructions
                                     }
 
                                     smmry_resp = await client.post(f"{os.environ.get('OLLAMA_PROXY_URL')}/multitools", json=analysis_payload, headers=headers, timeout=int(os.environ.get('REQUEST_TIMEOUT')))
@@ -490,8 +543,7 @@ async def _receive() -> None:
                                             'tool_outputs': tool_msg['tool_outputs'],
                                             }
                                 
-                                if connected_probes.get(message['prb_id']):
-                                    connected_probes[message['prb_id']]['tool_instructions'] = tool_msg['tool_instructions']
+                                
 
                                 if await cl_data_db.upload_db_data(id=chat_data_id, data=chat_data) > 0:
                                     logger.info(f"Chat data uploaded successfully with id: {chat_data_id}")
@@ -510,11 +562,18 @@ async def _receive() -> None:
                     headers = {'content-type': 'application/json'}
 
                     flow_msg = (
-                        f"{message['tool_output']}\n\n"
+                        f"{message['tool_output']}"
+                        + "\n\n"
                         f"{message['prompt']}"
                     )
                                     
-                    NET_ADMIN_INSTRUCTIONS += ANALYSIS_INSTRUCTIONS
+                    analysis_instructions = (
+                        NET_ADMIN_INSTRUCTIONS
+                        + "\n\n"
+                        + ANALYSIS_INSTRUCTIONS
+                        + "\n\n"
+                        + NETWORK_DIAGNOSTIC_SYSTEM_PROMPT_MD
+                    )
 
                     flow_payload = {
                         'model': os.environ.get('OLLAMA_MODEL'),
@@ -526,12 +585,13 @@ async def _receive() -> None:
                                 "require_approval": "never",
                                     },
                                 ],
-                        'usr_input': f"{flow_msg}",
-                        'instructions': NET_ADMIN_INSTRUCTIONS,
-                        'api_key': message['prb_api_key']
+                        'usr_input': flow_msg,
+                        'instructions': analysis_instructions,
+                        'api_key': message['prb_api_key'],
+                        
                     }
 
-                    if connected_probes.get(message['prb_id']):
+                    if connected_probes.get(message['prb_id'])['tool_instructions'] is not None:
                         flow_payload['tool_instructions'] = connected_probes[message['prb_id']]['tool_instructions']
 
                     await smartbot_processing(payload=flow_payload, message=message, headers=headers)
@@ -541,11 +601,18 @@ async def _receive() -> None:
                     headers = {'content-type': 'application/json'}
 
                     task_msg = (
-                        f"{message['tool_output']}\n\n"
+                        f"{message['tool_output']}"
+                        + "\n\n"
                         f"{message['prompt']}"
                     )
                                     
-                    NET_ADMIN_INSTRUCTIONS += ANALYSIS_INSTRUCTIONS
+                    analysis_instructions = (
+                        NET_ADMIN_INSTRUCTIONS
+                        + "\n\n"
+                        + ANALYSIS_INSTRUCTIONS
+                        + "\n\n"
+                        + NETWORK_DIAGNOSTIC_SYSTEM_PROMPT_MD
+                    )
 
                     task_payload = {
                         'model': os.environ.get('OLLAMA_MODEL'),
@@ -557,12 +624,12 @@ async def _receive() -> None:
                                 "require_approval": "never",
                                     },
                                 ],
-                        'usr_input': f"{task_msg}",
-                        'instructions': NET_ADMIN_INSTRUCTIONS,
+                        'usr_input': task_msg,
+                        'instructions': analysis_instructions,
                         'api_key': message['prb_api_key']
                     }
 
-                    if connected_probes.get(message['prb_id']):
+                    if connected_probes.get(message['prb_id'])['tool_instructions'] is not None:
                         task_payload['tool_instructions'] = connected_probes[message['prb_id']]['tool_instructions']
 
                     await smartbot_processing(payload=task_payload, message=message, headers=headers)

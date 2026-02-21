@@ -6,7 +6,7 @@
     <div class="col-12">
       <div class="card mb-4">
         <div class="card-header pb-0">
-          <h6>umjiniti AI Network Admin Assistant</h6>
+          <h6>umjini SmartBot</h6>
         </div>
         <div class="card-body px-0 pt-0 pb-2">
           <div class="row">
@@ -15,16 +15,16 @@
               <div class="p-3">
                 <!-- Dropdown -->
                 <div class="mb-3">
-                  <label for="mcp-dropdown" class="form-label">Select MCP Option:</label>
+                  <label for="mcp-dropdown" class="form-label">Select Probe:</label>
                   <select id="mcp-dropdown" class="form-select">
                     {% for opt in options.values() %}
                       <option value="{{ opt.url }}/llm/mcp" data-pid="{{ opt.prb_id }}" data-api="{{ opt.prb_api_key }}">{{ opt.name }}</option>
                     {% endfor %}
                   </select>
                 </div>
-
                 <!-- List -->
                 <div style="position: relative; height: 400px; overflow-y:auto;" id="mcp-list-container">
+                  <label for="mcp-list" class="form-label">Select Probe:</label>
                   <ul class="list-unstyled mb-0" id="mcp-list">
                     {% for opt in options.values() %}
                       <li class="p-2 border-bottom" data-value="{{ opt.url }}/llm/mcp" data-pid="{{ opt.prb_id }}" data-api="{{ opt.prb_api_key }}">

@@ -28,7 +28,7 @@
                 </tr>
               </thead>
               <tbody>
-                {% for alert in all_alerts.values() %}
+                {% for alert in alerts.values() %}
                 <tr>
                   <td>
                     <div class="d-flex px-2">
@@ -125,7 +125,19 @@
       </div>
       <div class="modal-body">
         <p id="alert-msg"></p>
-      
+
+        <div class="terminal-container mb-4">
+          <div class="window-bar">
+            <div class="window-buttons">
+              <div class="window-button close"></div>
+              <div class="window-button minimize"></div>
+              <div class="window-button maximize"></div>
+            </div>
+          </div>
+          <div class="terminal" id="terminal-output">
+            <p class="form-text"><code id="alert-msg"></code><br></p>
+          </div>
+        </div>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
@@ -149,7 +161,10 @@
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-        <button type="button" class="btn btn-danger" id="alert-ack-init">Acknowledge</button>
+        <button type="button" class="btn btn-danger" id="alert-ack-init">
+          <span class="spinner-grow spinner-grow-sm d-none" role="status" aria-hidden="true"></span>
+          <span class="alert-ack-button-text">Acknowledge</span>
+        </button>
       </div>
     </div>
   </div>
@@ -170,7 +185,10 @@
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-        <button type="button" class="btn btn-danger" id="alert-rslv-init">Resolve</button>
+        <button type="button" class="btn btn-danger" id="alert-rslv-init">
+          <span class="spinner-grow spinner-grow-sm d-none" role="status" aria-hidden="true"></span>
+          <span class="alert-rslv-button-text">Resolve</span>
+        </button>
       </div>
     </div>
   </div>
@@ -196,33 +214,16 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
-  // Alert action buttons
   const alertViewButtons = document.querySelectorAll(".alert-details-btn");
   const alertAckButtons = document.querySelectorAll(".alert-acknowledge-btn");
   const alertRslvButtons = document.querySelectorAll(".alert-resolve-btn");
 
-  // Alert modal action buttons
   const alertAckInitButton = document.getElementById("alert-ack-init");
   const alertRslvInitButton = document.getElementById("alert-rslv-init");
 
-  // Alert Modals
-  const alertViewModalEl = document.getElementById('alertViewModal');
-  let alertViewModal = null;
-  if (alertViewModalEl) {
-    alertViewModal = new bootstrap.Modal(alertViewModalEl, {});
-  }
-
-  const alertAckModalEl = document.getElementById('alertAckModal');
-  let alertAckModal = null;
-  if (alertAckModalEl) {    
-    alertAckModal = new bootstrap.Modal(alertAckModalEl, {});
-  }
-
-  const alertRslvModalEl = document.getElementById('alertRslvModal');
-  let alertRslvModal = null;
-  if (alertRslvModalEl) {    
-    alertRslvModal = new bootstrap.Modal(alertRslvModalEl, {});
-  }
+  const alertViewModal = new bootstrap.Modal(document.getElementById('alertViewModal'));
+  const alertAckModal = new bootstrap.Modal(document.getElementById('alertAckModal'));
+  const alertRslvModal = new bootstrap.Modal(document.getElementById('alertRslvModal'));
 
   // View Details button handler
   alertViewButtons.forEach(btn => {
@@ -293,34 +294,72 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   alertAckInitButton.addEventListener("click", async function() {
-    const endpoint = `https://${mntrURL}/alertscfg?usr={{ cur_usr }}`;
+    const spinner = this.querySelector(".spinner-grow");
+    const buttonText = this.querySelector(".alert-ack-button-text");
+    
+    spinner.classList.remove('d-none');
+    spinner.classList.add('d-inline-block');
+    buttonText.textContent = "Acknowledging Alert...";
+    this.disabled = true;
+
+    const endpoint = `https://${mntrURL}/v1/api/core/user/alerts?usr={{ cur_usr }}`;
     const payload = { 'id': this.dataset.id,
                          'action': 'ack' };
     
     const resp = await fetch(endpoint, {method: "POST", credentials:"same-origin", headers: {"Content-Type": "application/json"}, body: JSON.stringify(payload)});
       if (resp.ok) {
-        alert("Alert acknowledge successful");
-        if (alertAckModal) {
-          alertAckModal.hide();
-        }
+        spinner.classList.remove('d-inline-block');
+        spinner.classList.add('d-none');
+        buttonText.textContent = "Acknowledge";
+        this.disabled = false;
+
+        document.getElementById('notificationModalLabel').textContent = 'Alert Acknowledge Success';
+        document.getElementById('notif-modal-text').innerText = `The ${this.dataset.alert_type} alert has been successfully acknowledged.`;
+        notificationModal.show();
       } else {
-        alert("Alert acknowledge failed");
+        spinner.classList.remove('d-inline-block');
+        spinner.classList.add('d-none');
+        buttonText.textContent = "Acknowledge";
+        this.disabled = false;
+
+        document.getElementById('notificationModalLabel').textContent = 'Alert Acknowledge Failed';
+        document.getElementById('notif-modal-text').innerText = `Failed to acknowledge the ${this.dataset.alert_type} alert. Please try again.`;
+        notificationModal.show();
       }
   });
 
   alertRslvInitButton.addEventListener("click", async function() {
-    const endpoint = `https://${mntrURL}/alertscfg?usr={{ cur_usr }}`;
+    const spinner = this.querySelector(".spinner-grow");
+    const buttonText = this.querySelector(".alert-rslv-button-text");
+    spinner.classList.remove('d-none');
+    spinner.classList.add('d-inline-block');
+    buttonText.textContent = "Resolving Alert...";
+    this.disabled = true;
+
+    const endpoint = `https://${mntrURL}/v1/api/core/user/alerts?usr={{ cur_usr }}`;
     const payload = { 'id': this.dataset.id,
                          'action': 'rslv' };
     
     const resp = await fetch(endpoint, {method: "POST", credentials:"same-origin", headers: {"Content-Type": "application/json"}, body: JSON.stringify(payload)});
       if (resp.ok) {
-        alert("Alert resolve successful");
-        if (alertRslvModal) {
-          alertRslvModal.hide();
-        }
+        spinner.classList.remove('d-inline-block');
+        spinner.classList.add('d-none');
+        buttonText.textContent = "Resolve";
+        this.disabled = false;
+
+        document.getElementById('notificationModalLabel').textContent = 'Alert Resolve Success';
+        document.getElementById('notif-modal-text').innerText = `The ${this.dataset.alert_type} alert has been successfully resolved.`;
+        notificationModal.show();
+        
       } else {
-        alert("Alert resolve failed");
+        spinner.classList.remove('d-inline-block');
+        spinner.classList.add('d-none');
+        buttonText.textContent = "Resolve";
+        this.disabled = false;
+
+        document.getElementById('notificationModalLabel').textContent = 'Alert Resolve Failed';
+        document.getElementById('notif-modal-text').innerText = `Failed to resolve the ${this.dataset.alert_type} alert. Please try again.`;
+        notificationModal.show();
       }
   });
 

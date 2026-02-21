@@ -4,7 +4,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='img/bcl/umjiniti.png') }}" />
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='img/bcl/umjinilogo.png') }}" />
     <title>
       {% block title %} {% endblock %}
     </title>
@@ -144,7 +144,7 @@
     <div class="sidenav-header">
       <i class="fas fa-times p-3 cursor-pointer text-secondary opacity-5 position-absolute end-0 top-0 d-none d-xl-none" aria-hidden="true" id="iconSidenav"></i>
       <a class="navbar-brand m-0" href="{{ url_for('dashboard', cmp_id=cmp_id, obsc=obsc_key) }}">
-        <img src="{{ url_for('static', filename='img/bcl/umjinilogo.jpg') }}" class="navbar-brand-img h-100" alt="Consulting services logo"/>
+        <img src="{{ url_for('static', filename='img/bcl/umjinilogo.png') }}" class="navbar-brand-img h-100" alt="Consulting services logo"/>
         <span class="ms-1 font-weight-bold text-white">umjini</span>
       </a>
     </div>
@@ -152,19 +152,11 @@
     <div class="collapse navbar-collapse  w-auto " id="sidenav-collapse-main">
       <ul class="navbar-nav">
         <li class="nav-item">
-          <a class="nav-link" href="{{ url_for('dashboard', cmp_id=cmp_id, obsc=obsc_key) }}">
+          <a class="nav-link  " href="{{ url_for('smartbot', cmp_id=cmp_id, obsc=obsc_key) }}">
             <div class="icon icon-shape icon-sm shadow border-radius-md bg-white text-center me-2 d-flex align-items-center justify-content-center">
-              <img src="{{ url_for('static', filename='img/bcl/sidenav/dash.svg') }}" width="12px" height="12px" alt="umjini dashboard icon"/>
+              <img src="{{ url_for('static', filename='img/bcl/sidenav/ai.svg') }}" width="12px" height="12px" alt="umjini smartbot icon"/>
             </div>
-            <span class="text-white nav-link-text ms-1">Dashboard</span>
-          </a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link  " href="{{ url_for('probes', cmp_id=cmp_id, obsc=obsc_key) }}">
-            <div class="icon icon-shape icon-sm shadow border-radius-md bg-white text-center me-2 d-flex align-items-center justify-content-center">
-              <img src="{{ url_for('static', filename='img/bcl/probe.svg') }}" width="12px" height="12px" alt="umjini probes icon"/>
-            </div>
-            <span class="text-white nav-link-text ms-1">Probes</span>
+            <span class="text-white nav-link-text ms-1">Probe Manager</span>
           </a>
         </li>
         <li class="nav-item">
@@ -173,14 +165,6 @@
               <img src="{{ url_for('static', filename='img/bcl/sidenav/alerts.svg') }}" width="12px" height="12px" alt="umjini alerts icon"/>
             </div>
             <span class="text-white nav-link-text ms-1">Alerts</span>
-          </a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link  " href="{{ url_for('smartbot', cmp_id=cmp_id, obsc=obsc_key) }}">
-            <div class="icon icon-shape icon-sm shadow border-radius-md bg-white text-center me-2 d-flex align-items-center justify-content-center">
-              <img src="{{ url_for('static', filename='img/bcl/sidenav/ai.svg') }}" width="12px" height="12px" alt="umjini smartbot icon"/>
-            </div>
-            <span class="text-white nav-link-text ms-1">Chat with SmartBot</span>
           </a>
         </li>
       </ul>

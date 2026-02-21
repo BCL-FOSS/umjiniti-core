@@ -898,7 +898,7 @@
         const name = button.dataset.name || '';
         const probe = button.dataset.probe || '';
         const comment = button.dataset.comment || '';
-        
+
         document.getElementById('flow-delete-id-holder').dataset.id = id;
         document.getElementById('flow-delete-probe-holder').dataset.probe = probe;
         document.getElementById('flow-delete-comment-holder').dataset.comment = comment;
@@ -1014,11 +1014,6 @@
         }
       });
     }); 
-
-    viewTraceButton.addEventListener('click', async function () {
-      const selectedTrace = document.getElementById('trace-type-select').dataset.value;
-      
-    });
 
     function showToolWindow(type) {
       document.querySelectorAll(".tool-window").forEach(w => w.style.display = "none");
