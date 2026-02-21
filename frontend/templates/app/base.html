@@ -698,6 +698,7 @@
         "auto_type": 'task',
         "prb_id": current_pid,
         "task": traceType,
+        "user_id": curUsrID,
         "prms": {
           "target": traceTarget
         }
@@ -848,7 +849,8 @@
       let taskData = {
         "act": "prb_task_init",
         "prb_id": current_pid,
-        "task": spdtstType
+        "task": spdtstType,
+        "user_id": curUsrID,
       };
 
       if (spdtstClientOptions && spdtstType === "spdtst_clnt") {
@@ -989,6 +991,7 @@
         "act": "prb_task_init",
         "prb_id": current_pid,
         "task": scanType,
+        "user_id": curUsrID,
         "prms": {
           "subnet": scanTarget
         }
@@ -1131,7 +1134,8 @@
       let taskData = {
         "act": "prb_task_init",
         "prb_id": current_pid,
-        "task": pcapType
+        "task": pcapType,
+        "user_id": curUsrID,
       };
 
       if (pcapInterface && pcapType != "pcap_lcl") {
@@ -1262,7 +1266,8 @@
         "act": "prb_task_init",
         "prb_id": probe_id.dataset.prb_id,
         "comment": comment.dataset.comment,
-        "task_id": id
+        "task_id": id,
+        "user_id": curUsrID
       };  
 
       if (enabled.dataset.enabled === "enabled"){
@@ -1319,7 +1324,8 @@
         "act": "prb_task_init",
         "prb_id": probe_id.dataset.prb_id,
         "comment": comment.dataset.comment,
-        "task_id": id
+        "task_id": id,
+        "user_id": curUsrID
       };  
 
       if (!days.value && !months.value && !hours.value && !minutes.value && !dom.value && !smartbotSwitch.checked && !flowbotSwitch.checked){
@@ -1397,7 +1403,8 @@
         "prb_id": probe_id.dataset.prb_id,
         "comment": comment.dataset.comment,
         "oper": "rm_task",
-        "task_id": id
+        "task_id": id,
+        "user_id": curUsrID
 
       };  
 
@@ -1444,7 +1451,8 @@
             "prb_id": probe_id.dataset.prb_id,
             "comment": comment.dataset.comment,
             "oper": "rm_task",
-            "task_id": id
+            "task_id": id,
+            "user_id": curUsrID
 
           };  
 
