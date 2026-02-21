@@ -43,7 +43,7 @@ ws_rate_limiter = WSRateLimiter(redis_host=os.environ.get('RATE_LIMIT_DB'),
 broker = Broker()
 probe_broker = Broker()
 util_obj=Util()
-api_name = 'umj-api-wflw'
+api_name = os.environ.get('API_NAME', 'umj-api-wflw')
 auth_ping_counter = {}
 mntr_url=os.environ.get('SERVER_NAME')
 email_sender_handler = EmailSenderHandler(brevo_api_key=os.environ.get('BREVO_API_KEY'))
@@ -74,6 +74,7 @@ def load_network_diagnostic_prompt() -> str:
     try:
         base_dir = os.path.dirname(os.path.abspath(__file__))  # backend/
         prompt_path = os.path.join(base_dir, "ai", "smartbot", "network-diagnostic-system-prompt.md")
+        logger.info(f"Loading network diagnostic system prompt from: {prompt_path}")
         with open(prompt_path, "r", encoding="utf-8") as f:
             return f.read()
     except Exception as e:
@@ -543,8 +544,6 @@ async def _receive() -> None:
                                             'tool_outputs': tool_msg['tool_outputs'],
                                             }
                                 
-                                
-
                                 if await cl_data_db.upload_db_data(id=chat_data_id, data=chat_data) > 0:
                                     logger.info(f"Chat data uploaded successfully with id: {chat_data_id}")
                                 

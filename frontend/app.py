@@ -33,7 +33,7 @@ cl_data_db = RedisDB(hostname=os.environ.get('CLIENT_DATA_DB'),
 ip_ban_db = RedisDB(hostname=os.environ.get('IP_BAN_DB'), 
                     port=os.environ.get('IP_BAN_DB_PORT'))
 mntr_url=os.environ.get('SERVER_NAME')
-api_name = 'umj-api-wflw'
+api_name = os.environ.get('API_NAME', 'umj-api-wflw')
 max_auth_attempts=int(os.environ.get('MAX_AUTH_ATTEMPTS'))
 auth_attempts={}
 reg_attempts={}
@@ -71,8 +71,6 @@ async def ip_blocker(auto_ban: bool = False):
 
     if auth_attempts[request.access_route[-1]] != max_auth_attempts:
         auth_attempts[request.access_route[-1]] += 1
-        #await flash(message=f'Try again...', category='danger')
-        #return redirect(url_for('login'))
     else:
         now = datetime.now(tz=timezone.utc)
         ban_data = {'ip': request.access_route[-1],
@@ -393,16 +391,6 @@ async def smartbot(cmp_id, obsc):
         probe_data = {"":""}
 
     return await render_template("app/smartbot.html", obsc_key=session.get('url_key'), ws_url=ws_url, cmp_id=cmp_id, user=user_data.get('unm'), options=probe_data, mntr_url=mntr_url, cur_usr=user_data.get('unm'), cur_usr_id=cur_usr_id, data=user_data)
-
-@app.route('/settings', defaults={'cmp_id': url_cmp_id,'obsc': url_key}, methods=['GET', 'POST'])
-@app.route("/settings/<string:cmp_id>/<string:obsc>", methods=['GET', 'POST'])
-@user_login_required
-async def settings(cmp_id, obsc):
-    cur_usr_id = current_client.auth_id
-    session["csrf_ready"] = True
-    user_data, ws_url = await retrieve_user_sess_data(sess_id=cur_usr_id)
-  
-    return await render_template("app/settings.html", obsc_key=session.get('url_key'), cmp_id=cmp_id, data=user_data, cur_usr=user_data.get('unm'), mntr_url=mntr_url, ws_url=ws_url, cur_usr_id=cur_usr_id)
 
 @app.route('/floweditor', defaults={'cmp_id': 'bcl','obsc': url_key, 'flow_id': 'default', 'prb_id': 'default'}, methods=['GET', 'POST'])
 @app.route("/floweditor/<string:cmp_id>/<string:obsc>/<string:flow_id>/<string:prb_id>", methods=['GET', 'POST'])

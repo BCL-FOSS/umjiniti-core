@@ -29,6 +29,7 @@ services:
       - BREVO_SENDER_EMAIL=${BREVO_SENDER_EMAIL}
       - OLLAMA_MODEL=${OLLAMA_MODEL}
       - MAX_CONTACTS_PER_TYPE=${MAX_CONTACTS_PER_TYPE}
+      - API_NAME=${API_NAME}
     volumes:
       - backend_data:/home/quart/instance/apps
     
@@ -52,6 +53,7 @@ services:
       - REQUEST_TIMEOUT=${REQUEST_TIMEOUT}
       - API_TOKEN_NAME=${API_TOKEN_NAME}
       - MAX_AUTH_ATTEMPTS=${MAX_AUTH_ATTEMPTS}
+      - API_NAME=${API_NAME}
     volumes:
       - frontend_data:/home/quart/instance/apps
 
