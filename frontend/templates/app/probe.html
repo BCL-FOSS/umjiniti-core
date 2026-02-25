@@ -348,15 +348,20 @@
                                 </div>
                               </div>
                               <div class="row">
-                                <div class="col-6">
-                                  <label class="form-label">SNMP scripts</label>
+                                <div class="col-4">
+                                  <label class="form-label">SNMP Scripts</label>
                                   <input type="text" class="form-control" placeholder="scripts" id="scan-snmp-scripts">
-                                  <p class="form-text">For SNMP Scan only. Enter comma-separated nmap SNMP scripts to run (optional)</p>
+                                  <p class="form-text">For SNMP Scan only. Enter comma-separated nmap SNMP scripts to run</p>
                                 </div>
-                                <div class="col-6">
+                                <div class="col-4">
+                                  <label class="form-label">SNMP Community String</label>
+                                  <input type="text" class="form-control" placeholder="community" id="scan-snmp-community">
+                                  <p class="form-text">For SNMP Scan only. Enter the SNMP community string</p>
+                                </div>
+                                <div class="col-4">
                                   <label class="form-label">Ports to scan</label>
                                   <input type="text" class="form-control" placeholder="ports" id="scan-ports">
-                                  <p class="form-text">For Port Scan only. Enter comma-separated ports to scan (optional)</p>
+                                  <p class="form-text">For Port Scan only. Enter comma-separated ports to scan</p>
                                 </div>
                               </div>
                             </div>
@@ -367,7 +372,7 @@
                             <div class="form-floating mb-3">
                               <label class="form-label">Command Options</label>
                               <input type="text" class="form-control" id="scan-options" >
-                              <div class="form-text" id="scan-addon4">Options for the scan command</div>
+                              <div class="form-text" id="scan-addon4">For Custom scan only. Enter command arguments</div>
                             </div>
                             <div class="d-grid">
                               <button type="button" class="btn btn-dark mb-0" id="scan-init" data-pid="{{ probe_id|e }}">

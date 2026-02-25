@@ -739,6 +739,7 @@
         "flow_name": name,
         "flow_id": id,
         "oper": "init_task",
+        "auto_type": "flow"
       };
 
       if (flowDays.value){
@@ -818,7 +819,6 @@
 
       let taskData = {
         "act": "prb_task_init",
-        "auto_type": 'task',
         "prb_id": current_pid,
         "task": traceType,
         "user_id": curUsrID,
@@ -900,6 +900,7 @@
       }
 
       taskData["oper"] = "init_task";
+      taskData["auto_type"] = 'task';
 
       ws.send(JSON.stringify(taskData));
 
@@ -1042,6 +1043,7 @@
       }
 
       taskData["oper"] = "init_task";
+      taskData["auto_type"] = 'task';
 
       ws.send(JSON.stringify(taskData));
 
@@ -1088,6 +1090,11 @@
       const scanTarget = document.getElementById("scan-target").value;
       const scanInterface = document.getElementById("scan-interface").value;
       const scanOptions = document.getElementById("scan-options").value;
+      const scanSNMPScript = document.getElementById("scan-snmp-script").value;
+      const scanSNMPCommunity = document.getElementById("scan-snmp-community").value;
+      const scanPorts = document.getElementById("scan-ports").value;
+      const scanFPLimit = document.getElementById("scan-fplimit-switch");
+      const scanDevIDNoise = document.getElementById("scan-devid-noise-switch");
       const current_pid =  this.dataset.pid;
 
       const taskDays = document.getElementById('task-days');
@@ -1126,6 +1133,26 @@
 
       if (scanOptions && scanType === "scan_custom") {
         taskData["prms"]["options"] = scanOptions;
+      }
+
+      if (scanSNMPScript && scanType === "scan_snmp") {
+        taskData["prms"]["scripts"] = scanSNMPScript;
+      }
+
+      if (scanSNMPCommunity && scanType === "scan_snmp") {
+        taskData["snmp_community"] = scanSNMPCommunity;
+      }
+
+      if (scanDevIDNoise.checked && scanType === "scan_dev_id") {
+        taskData["prms"]["noise"] = true;
+      }
+
+       if (scanFPLimit.checked && scanType === "scan_dev_fngr") {
+        taskData["prms"]["limit"] = true;
+      }
+
+       if (scanPorts && scanType === "scan_port") {
+        taskData["prms"]["ports"] = scanPorts;
       }
 
       if (taskSmartBotSwitch.checked && taskSmartBotPrompt.value.trim()) {
@@ -1186,6 +1213,7 @@
       }
 
       taskData["oper"] = "init_task";
+      taskData["auto_type"] = 'task';
 
       ws.send(JSON.stringify(taskData));
 
@@ -1335,6 +1363,7 @@
       }
 
       taskData["oper"] = "init_task";
+      taskData["auto_type"] = 'task';
 
       ws.send(JSON.stringify(taskData));
 
