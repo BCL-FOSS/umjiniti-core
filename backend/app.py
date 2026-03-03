@@ -73,7 +73,7 @@ ANALYSIS_INSTRUCTIONS = (
 def load_network_diagnostic_prompt() -> str:
     try:
         base_dir = os.path.dirname(os.path.abspath(__file__))  # backend/
-        prompt_path = os.path.join(base_dir, "ai", "smartbot", "network-diagnostic-system-prompt.md")
+        prompt_path = os.path.join(base_dir, "ai", "smartbot", "skills", "network-diagnostic-system-prompt.md")
         logger.info(f"Loading network diagnostic system prompt from: {prompt_path}")
         with open(prompt_path, "r", encoding="utf-8") as f:
             return f.read()
@@ -371,11 +371,11 @@ async def smartbot_processing(payload: dict, message: dict, headers: dict):
                     net_cmd_data = f'{line}\n'
                     output_message+=net_cmd_data
 
-                    smartbot_alert = {
-                            'llm_output': output_message,
-                            'alerts': message['alerts'],
-                            'oper': 'alert'
-                        }
+            smartbot_alert = {
+                'llm_output': output_message,
+                'alerts': message['alerts'],
+                'oper': 'alert'
+            }
 
             await send_processed_data_to_probe(data_to_send=smartbot_alert)
 
@@ -881,6 +881,10 @@ async def heartbeat(probe_id):
             await ip_blocker(conn_obj=websocket, auto_ban=True)
             await websocket.close()
 
+        if await ws_rate_limiter.check_rate_limit(client_id=probe_id) is False:
+            await ip_blocker(conn_obj=websocket)
+            abort(401)
+
         monitor_task = None
         if await cl_data_db.get_all_data(match=f"*{probe_id}*", cnfrm=True) is False:
             await ip_blocker(conn_obj=websocket, auto_ban=True)
@@ -965,67 +969,65 @@ async def ws():
             client_connection = jwt_token
 
             # Rate limiter for websocket connections using user jwt tokens
-            if await ws_rate_limiter.check_rate_limit(client_id=client_connection) is True:
+            if await ws_rate_limiter.check_rate_limit(client_id=client_connection) is False:
+                await ip_blocker(conn_obj=websocket)
+                abort(401)
 
-                if isinstance(user, str) is False:
-                    raise Exception()
-                
-                if id is not None:
-                    if await cl_auth_db.get_all_data(match=f'*uid:{user}*', cnfrm=True) and await cl_sess_db.get_all_data(match=f'{id}', cnfrm=True) is True:
+            if id is not None:
+                if await cl_auth_db.get_all_data(match=f'*uid:{user}*', cnfrm=True) and await cl_sess_db.get_all_data(match=f'{id}', cnfrm=True) is True:
                                 
-                        account_data = await cl_sess_db.get_all_data(match=f'*{id}*')
-                        if account_data is None:
-                            await ip_blocker(conn_obj=websocket)
-                            raise Exception()
+                    account_data = await cl_sess_db.get_all_data(match=f'*{id}*')
+                    if account_data is None:
+                        await ip_blocker(conn_obj=websocket)
+                        abort(401)
+                    else:
+                        logger.info(account_data)
+                        sub_dict = next(iter(account_data.values()))
+                        logger.info(sub_dict)
+
+                    jwt_key = sub_dict.get('usr_jwt_secret')
+                    logger.info(jwt_key)
+                    decoded_token = jwt.decode(jwt=jwt_token, key=jwt_key , algorithms=["HS256"])
+                    logger.info(decoded_token)
+
+                    if decoded_token.get('rand') != sub_dict.get('usr_rand'):
+                        raise InvalidTokenError()
                             
-                        else:
-                            logger.info(account_data)
-                            sub_dict = next(iter(account_data.values()))
-                            logger.info(sub_dict)
+            logger.info('websocket authentication successful')
+            await websocket.accept()
 
-                        jwt_key = sub_dict.get('usr_jwt_secret')
-                        logger.info(jwt_key)
-                        decoded_token = jwt.decode(jwt=jwt_token, key=jwt_key , algorithms=["HS256"])
-                        logger.info(decoded_token)
-
-                        if decoded_token.get('rand') != sub_dict.get('usr_rand'):
-                            raise InvalidTokenError()
-                            
-                logger.info('websocket authentication successful')
-                await websocket.accept()
-
-                if id and (id not in auth_ping_counter):
-                        # Initialize a session expiry entry for this connection so that a missing ping
-                        # during the first 5 minutes will still expire the session.
-                    now = datetime.now(tz=timezone.utc)
-                    auth_ping_counter[id] = {
-                                    "sess_id": id,
-                                    "exp": round_up_to_5min(now + timedelta(minutes=5, seconds=0, microseconds=0)), # First expiry 5 minutes from now, quantized down
-                            }
-                    logger.debug(f"Initialized ping expiry for session {id} -> {auth_ping_counter[id]['exp']}")
+            if id and (id not in auth_ping_counter):
+            # Initialize a session expiry entry for this connection so that a missing ping
+            # during the first 5 minutes will still expire the session.
+                now = datetime.now(tz=timezone.utc)
+                auth_ping_counter[id] = {
+                    "sess_id": id,
+                    "exp": round_up_to_5min(now + timedelta(minutes=5, seconds=0, microseconds=0)), # First expiry 5 minutes from now, quantized down
+                }
+                logger.debug(f"Initialized ping expiry for session {id} -> {auth_ping_counter[id]['exp']}")
                         
-                    asyncio.ensure_future(_receive())
+                asyncio.ensure_future(_receive())
 
-                    #monitor_task = asyncio.create_task(session_watchdog(sess_id=id))
+                #monitor_task = asyncio.create_task(session_watchdog(sess_id=id))
 
-                if id and (id in auth_ping_counter):
-                    asyncio.ensure_future(_receive())
+            if id and (id in auth_ping_counter):
+                asyncio.ensure_future(_receive())
 
-                    #monitor_task = asyncio.create_task(session_watchdog(sess_id=id))
+                #monitor_task = asyncio.create_task(session_watchdog(sess_id=id))
 
-                try:
-                    async for message in broker.subscribe():
-                        await websocket.send(message)
-                except asyncio.CancelledError:
-                    # Connection was closed, exit loop to cleanup normally
-                    logger.debug("Subscribe loop cancelled (client disconnected)")
-                    pass
-                except Exception as e:
-                    logger.exception("Error while reading from broker or sending websocket message")
-                    pass
+            try:
+                async for message in broker.subscribe():
+                    await websocket.send(message)
+            except asyncio.CancelledError:
+                # Connection was closed, exit loop to cleanup normally
+                logger.debug("Subscribe loop cancelled (client disconnected)")
+                pass
+            except Exception as e:
+                logger.exception("Error while reading from broker or sending websocket message")
+                pass
         else:
            await ip_blocker(conn_obj=websocket)
-           raise Exception()
+           abort(401)
     except Exception as e:
         logger.error(e)
     except asyncio.CancelledError as e:
@@ -1132,6 +1134,7 @@ async def enroll():
         return jsonify({'status':'probe adoption failed'}), 400
     
 @app.route('/v1/api/core/probes/<string:prb_id>/exec', methods=['POST'])
+@rate_exempt
 async def exec(prb_id):
     logger.info(request.args)
 
@@ -1144,6 +1147,10 @@ async def exec(prb_id):
         abort(401)
 
     await prb_jwt_verification(usr=usr, jwt_token=jwt_token, request=request, api_key=api_key)
+
+    if await ws_rate_limiter.check_rate_limit(client_id=jwt_token) is False:
+        await ip_blocker(conn_obj=request)
+        abort(401)
 
     data = await request.get_json()
 

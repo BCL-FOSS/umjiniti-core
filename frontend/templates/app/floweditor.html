@@ -440,12 +440,18 @@
                           </div>
                         </div>
                         <div class="row">
-                          <div class="col-6">
+                          <div class="col-4">
                             <label class="form-label">SNMP scripts</label>
                             <input type="text" class="form-control" placeholder="scripts" df-prb-scansnmpscripts>
                             <p class="form-text">For SNMP Scan only. Enter comma-separated nmap SNMP scripts to run (optional)</p>
                           </div>
-                          <div class="col-6">
+                          <div class="col-4">
+                            <div class="form-check form-switch">
+                              <label class="form-check-label">SNMP Community</label>
+                              <input type="text" class="form-control" placeholder="community" df-prb-snmpcommunity>
+                            </div>
+                          </div>
+                          <div class="col-4">
                             <label class="form-label">Ports to scan</label>
                             <input type="text" class="form-control" placeholder="ports" df-prb-scanports>
                             <p class="form-text">For Port Scan only. Enter comma-separated ports to scan (optional)</p>
@@ -700,9 +706,18 @@
                   <div class="form-text" id="scan-addon4">Limiting the scan may reduce network traffic and improve performance, but could result in less accurate results.</div>
                 </div>
                 <div class="form-floating mb-3">
-                  <label class="form-label">SNMP Scripts</label>
-                  <input type="text" class="form-control" df-snmp-scripts>
-                  <div class="form-text" id="scan-addon4">For SNMP Scan only. Enter comma-separated nmap SNMP scripts to run (optional)</div>
+                  <div class="row">
+                    <div class="col-6">
+                      <label class="form-label">SNMP Scripts</label>
+                      <input type="text" class="form-control" df-snmp-scripts>
+                      <div class="form-text" id="scan-addon4">For SNMP Scan only. Enter comma-separated nmap SNMP scripts to run (optional)</div>
+                    </div>
+                    <div class="col-6">
+                      <label class="form-label">SNMP Community String</label>
+                      <input type="text" class="form-control" df-snmp-community>
+                      <div class="form-text" id="scan-addon4">For SNMP Scan only. Enter the SNMP community string (optional)</div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -713,7 +728,7 @@
           case 'scan_port':
             var arp = `
             <div>
-              <div class="title-box"><i class="fab fa-telegram-plane"></i>SNMP Scan</div>
+              <div class="title-box"><i class="fab fa-telegram-plane"></i>Port Scan</div>
               <div class="box">
                 <div class="form-floating mb-3">
                   <label class="form-label">Target Subnet/IP</label>

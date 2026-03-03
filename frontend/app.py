@@ -448,8 +448,7 @@ async def alerts(cmp_id, obsc, prb_id, alert_type):
 
     if await cl_sess_db.get_all_data(match=f"alert:", cnfrm=True) is False:
         alerts = {'':''}
-
-    if prb_id != "default" and alert_type != "default":
+    elif prb_id != "default" and alert_type != "default":
         alerts = await cl_data_db.get_all_data(match=f"alert:{prb_id}:{alert_type}:*")
     elif prb_id != "default" and alert_type == "default":
         alerts = await cl_data_db.get_all_data(match=f"alert:{prb_id}:*")
